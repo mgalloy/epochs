@@ -44,6 +44,8 @@ For example, for a configuration file, `epochs.cfg`, such as::
 
 The dates can be anything parsed by `dateutil.parser.parse`. Then, epochs can retrieve the correct value from the config file corresponding to a date:
 
+.. code-block:: python
+
   >>> import epochs
   >>> ep = epochs.parse('epochs.cfg')
   >>> value = ep.get('value', datetime='2019-04-09 21:55:45')
@@ -68,7 +70,9 @@ And an example configuration file following this specification::
   name    : Boulder
   streets : [Broadway, Baseline, Valmont]
 
-Then to parse the configuration file with its specification::
+Then to parse the configuration file with its specification:
+
+.. code-block:: python
 
   >>> import epochs
   >>> cf = epochs.parse('example.cfg', spec='spec.cfg')
