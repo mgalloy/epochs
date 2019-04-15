@@ -4,14 +4,14 @@ epochs
 
 
 .. image:: https://img.shields.io/pypi/v/epochs.svg
-        :target: https://pypi.python.org/pypi/epochs
+     :target: https://pypi.python.org/pypi/epochs
 
 .. image:: https://img.shields.io/travis/mgalloy/epochs.svg
-        :target: https://travis-ci.org/mgalloy/epochs
+     :target: https://travis-ci.org/mgalloy/epochs
 
 .. image:: https://readthedocs.org/projects/epochs/badge/?version=latest
-        :target: https://epochs.readthedocs.io/en/latest/?badge=latest
-        :alt: Documentation Status
+     :target: https://epochs.readthedocs.io/en/latest/?badge=latest
+     :alt: Documentation Status
 
 .. image:: https://pyup.io/repos/github/mgalloy/epochs/shield.svg
      :target: https://pyup.io/repos/github/mgalloy/epochs/
@@ -42,7 +42,7 @@ For example, for a configuration file, `epochs.cfg`, such as::
   [2019-04-09 22:31:01]
   value   : 5
 
-The dates can be anything parsed by `dateutil.parser.parse`. Then, epochs can retrieve the correct value from the config file corresponding to a date:
+The dates can be anything parsed by `dateutil.parser.parse`_. Then, epochs can retrieve the correct value from the config file corresponding to a given date:
 
 .. code-block:: python
 
@@ -94,3 +94,5 @@ This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypack
 
 .. _Cookiecutter: https://github.com/audreyr/cookiecutter
 .. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
+
+.. _`dateutil.parser.parse`: https://dateutil.readthedocs.io/en/stable/parser.html

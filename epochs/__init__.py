@@ -5,3 +5,8 @@
 __author__ = """Michael Galloy"""
 __email__ = 'mgalloy@gmail.com'
 __version__ = '0.1.0'
+
+import epochs.parser
+
+
+__all__ = ['parser']
