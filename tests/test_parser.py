@@ -51,3 +51,9 @@ def test_parse_specline():
     assert(spec.required == False)
     assert(spec.type == str)
     assert(spec.default is None)
+
+    spec = epochs.parser.parse_specline('city : default="Boulder, CO"')
+    assert(spec.name == 'city')
+    assert(spec.required == False)
+    assert(spec.type == str)
+    assert(spec.default == 'Boulder, CO')
