@@ -22,55 +22,74 @@ def test_str2type_error():
 
 
 def test_convert():
-    value = epochs.parser.convert('True', bool)
+    value = epochs.parser.convert('True', bool, False)
     assert(value == True)
     assert(type(value) == bool)
 
-    value = epochs.parser.convert('False', bool)
+    value = epochs.parser.convert('False', bool, False)
     assert(value == False)
     assert(type(value) == bool)
 
-    value = epochs.parser.convert('1.23', float)
+    value = epochs.parser.convert('1.23', float, False)
     assert(abs(value - 1.23) < 0.001)
     assert(type(value) == float)
 
-    value = epochs.parser.convert('123', int)
+    value = epochs.parser.convert('123', int, False)
     assert(value == 123)
     assert(type(value) == int)
 
 
+def lists_equal(lst1, lst2):
+    for l1, l2 in zip(lst1, lst2):
+        assert(l1 == l2)
+
+
+def test_convert_list():
+    value = epochs.parser.convert('[a, b, c]', str, True)
+    lists_equal(value, ['a', 'b', 'c'])
+    assert(type(value) == list)
+
+
 @pytest.mark.xfail(raises=ValueError)
 def test_convert_error():
-    value = epochs.parser.convert('other', bool)
+    value = epochs.parser.convert('other', bool, False)
+
+
+def test_parse_specline_truth():
+    for v in ['True', 'true', 'Yes', 'yes']:
+        spec = epochs.parser.parse_specline(f'required={v}, type=int, default=1')
+        assert(spec.required == True)
+        assert(spec.type == int)
+        assert(spec.default == 1)
 
 
 def test_parse_specline():
-    spec = epochs.parser.parse_specline('t : required=True, type=int, default=1')
-    assert(spec.name == 't')
-    assert(spec.required == True)
-    assert(spec.type == int)
-    assert(spec.default == 1)
-
-    spec = epochs.parser.parse_specline('_name_ : type=float, default=1')
-    assert(spec.name == '_name_')
+    spec = epochs.parser.parse_specline('type=float, default=1')
     assert(spec.required == False)
     assert(spec.type == float)
     assert(spec.default == 1.0)
+    assert(spec.list == False)
 
-    spec = epochs.parser.parse_specline('name.subname : default=1')
-    assert(spec.name == 'name.subname')
+    spec = epochs.parser.parse_specline('default=1')
     assert(spec.required == False)
     assert(spec.type == str)
     assert(spec.default == '1')
+    assert(spec.list == False)
 
-    spec = epochs.parser.parse_specline('name :')
-    assert(spec.name == 'name')
+    spec = epochs.parser.parse_specline('')
     assert(spec.required == False)
     assert(spec.type == str)
     assert(spec.default is None)
+    assert(spec.list == False)
 
-    spec = epochs.parser.parse_specline('city : default="Boulder, CO"')
-    assert(spec.name == 'city')
+    spec = epochs.parser.parse_specline('default="Boulder, CO"')
     assert(spec.required == False)
     assert(spec.type == str)
     assert(spec.default == 'Boulder, CO')
+    assert(spec.list == False)
+
+    spec = epochs.parser.parse_specline('type=List[int], default="[1, 3, 7]"')
+    assert(spec.required == False)
+    assert(spec.type == int)
+    lists_equal(spec.default, [1, 3, 7])
+    assert(spec.list == True)

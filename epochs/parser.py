@@ -3,16 +3,25 @@
 """Main module."""
 
 import collections
+import configparser
 import re
+from typing import List, TypeVar
 
 
-OptionSpec = collections.namedtuple('OptionSpec', 'name required type default')
+OptionValue = TypeVar('OptionValue',
+                      bool, float, int, str,
+                      List[bool], List[float], List[int], List[str])
 
-identifier_re = re.compile('[.\w]')
+OptionSpec = collections.namedtuple('OptionSpec', 'required type default list')
+
+TYPES = {'bool': bool, 'boolean': bool, 'float': float, 'int': int, 'str': str}
+
+identifier_re = re.compile('[.\w\[\]]')
 whitespace_re = re.compile('\s')
+listtypes_re  = re.compile('List\[(.*)\]')
 
 
-def parse_specline_tokens(specline):
+def parse_specline_tokens(specline: str) -> OptionSpec:
     '''Generator to tokenize spec line
 
     Parameters
@@ -40,7 +49,7 @@ def parse_specline_tokens(specline):
             else:
                 if identifier_re.match(c):
                     identifier += c
-                elif c in {':', '=', ','}:
+                elif c in {'=', ','}:
                     if identifier != '':
                         yield identifier
                         identifier = ''
@@ -57,7 +66,15 @@ def parse_specline_tokens(specline):
         yield identifier
 
 
-def str2type(s):
+def parse_list(list_expr):
+    list_expr = list_expr.strip()
+    if list_expr[0] != '[' or list_expr[-1] != ']':
+        raise ValueError(f'invalid list expr "{list_expr}"')
+    list_expr = list_expr[1:-1]
+    return list_expr.split(', ')
+
+
+def str2type(s: str) -> OptionValue:
     '''Convert a string type specification to the actual type
 
     Parameters
@@ -69,20 +86,13 @@ def str2type(s):
     -------
     type
     '''
-    s = s.lower()
-    if s == 'str':
-        return str
-    elif s == 'int':
-        return int
-    elif s == 'float':
-        return float
-    elif s in {'bool', 'boolean'}:
-        return bool
+    if s.lower() in set(TYPES):
+        return TYPES[s.lower()]
     else:
         raise ValueError(f'invalid type: {s}')
 
 
-def convert(value, type_value):
+def convert(value: str, type_value: type, is_list: bool) -> OptionValue:
     '''Convert a value to a given type
 
     Parameters
@@ -94,20 +104,23 @@ def convert(value, type_value):
 
     Returns
     -------
-    type_value
+    scalar or List with same type as type_value
     '''
-    if type_value == bool:
-        if value.lower() in {'true', '1'}:
-            return True
-        elif value.lower() in {'false', '0'}:
-            return False
-        else:
-            raise ValueError(f'syntax error: invalid value for bool type {value}')
+    if is_list:
+        return [convert(v, type_value, False) for v in parse_list(value)]
     else:
-        return type_value(value)
+        if type_value == bool:
+            if value.lower() in {'yes', 'true', '1'}:
+                return True
+            elif value.lower() in {'no', 'false', '0'}:
+                return False
+            else:
+                raise ValueError(f'invalid value "{value}" for bool type')
+        else:
+            return type_value(value)
 
 
-def parse_specline(specline):
+def parse_specline(specline) -> OptionSpec:
     '''Parse a spec line
 
     Parameters
@@ -126,11 +139,7 @@ def parse_specline(specline):
     required   = False
     type_value = str
     default    = None
-
-    name  = next(tokens)
-
-    colon = next(tokens)
-    if colon != ':': raise ValueError(f'syntax error at {colon}')
+    is_list    = False
 
     try:
         while True:
@@ -140,18 +149,18 @@ def parse_specline(specline):
 
             # handle attribute
             if attr_name.lower() == 'required':
-                if attr_value.lower() == 'true':
-                    required = True
-                elif attr_value.lower() == 'false':
-                    required = False
-                else:
-                    raise ValueError(f'syntax error: invalid required value {attr_value}')
+                required = convert(attr_value, bool, False)
             elif attr_name.lower() == 'type':
-                type_value = str2type(attr_value)
+                m = listtypes_re.match(attr_value)
+                if m:
+                    type_value = str2type(m[1])
+                    is_list = True
+                else:
+                    type_value = str2type(attr_value)
             elif attr_name.lower() == 'default':
                 default = attr_value
             else:
-                raise ValueError(f'syntax error: invalid attribute {attr}')
+                raise ValueError(f'invalid attribute {attr}')
 
             comma      = next(tokens)
     except StopIteration:
@@ -159,7 +168,93 @@ def parse_specline(specline):
 
     # convert default value to spec type
     if default is not None:
-        default = convert(default, type_value)
+        default = convert(default, type_value, is_list)
 
-    return (OptionSpec(name=name, required=required, type=type_value, default=default))
+    return OptionSpec(required=required, type=type_value, default=default, list=is_list)
 
+
+class ConfigParser(configparser.ConfigParser):
+    '''ConfigParser subclass which can verify a config file against a
+    specification and uses types/defaults from the specification.
+    '''
+
+    def __init__(self, spec_filename: str, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.specification = configparser.ConfigParser()
+        self.specification.read(spec_filename)
+
+    def get(self, section: str, option: str, raw=False,
+            **kwargs) -> OptionValue:
+        '''Get an option using the type and default from the specification file
+        '''
+        specline = self.specification.get(section, option)
+        spec = parse_specline(specline)
+
+        if not super().has_option(section, option):
+            return spec.default
+
+        value = super().get(section, option, raw=raw, **kwargs)
+
+        return value if raw else convert(value, spec.type)
+
+    def _write(self, fileobject) -> None:
+        max_len = 0
+        for s in self.specification.sections():
+            for o in self.specification.options(s):
+                max_len = max(max_len, len(o))
+
+        new_line = '\n'
+        first_section = True
+        for s in self.specification.sections():
+            new_line = '' if first_section else '\n'
+            fileobject.write(f'{new_line}[{s}]\n')
+            first_section = False
+            for o in self.specification.options(s):
+                v = self.typed_get(s, o)
+                fileobject.write(f'{o:{max_len}s} = {v}\n')
+
+    def write(self, file) -> None:
+        if isinstance(file, str):
+            with open(file, 'w') as f:
+                self._write(f)
+        else:
+            self._write(file)
+
+    def __str__(self) -> str:
+        f = io.StringIO()
+        self._write(f)
+        f.seek(0)
+        return f.read()
+
+    def is_valid(self, f: str) -> bool:
+        '''Verify that the given config file matches the specification.
+        '''
+        config = configparser.ConfigParser()
+        config.read(f)
+
+        # check that every option given by f is in specification
+        for s in config.sections():
+            for o in config.options(s):
+                if config.has_option('DEFAULT', o):
+                    continue
+                if not self.specification.has_option(s, o):
+                    return False
+
+        # check that all options without a default value are given by f
+        for s in self.specification.sections():
+            for o in self.specification.options(s):
+                if self.specification.has_option('DEFAULT', o):
+                    continue
+                specline = self.specification.get(s, o)
+                spec = parse_specline(specline)
+                if spec.default is None:
+                    if not config.has_option(s, o):
+                        return False
+
+        # TODO: make sure values are the correct type
+
+        return True
+
+
+class EpochParser():
+    pass
