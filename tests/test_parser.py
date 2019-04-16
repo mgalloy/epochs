@@ -8,6 +8,19 @@ import pytest
 import epochs
 
 
+def test_str2type():
+    assert(epochs.parser.str2type('str') == str)
+    assert(epochs.parser.str2type('int') == int)
+    assert(epochs.parser.str2type('float') == float)
+    assert(epochs.parser.str2type('bool') == bool)
+    assert(epochs.parser.str2type('boolean') == bool)
+
+
+@pytest.mark.xfail(raises=ValueError)
+def test_str2type_error():
+    t = epochs.parser.str2type('other')
+
+
 def test_convert():
     value = epochs.parser.convert('True', bool)
     assert(value == True)
@@ -20,6 +33,10 @@ def test_convert():
     value = epochs.parser.convert('1.23', float)
     assert(abs(value - 1.23) < 0.001)
     assert(type(value) == float)
+
+    value = epochs.parser.convert('123', int)
+    assert(value == 123)
+    assert(type(value) == int)
 
 
 @pytest.mark.xfail(raises=ValueError)
