@@ -109,7 +109,7 @@ def _convert(value: str, type_value: type, is_list: bool=False) -> OptionValue:
     scalar or List with same type as type_value
     '''
     if is_list:
-        return [_convert(v, type_value, False) for v in _parse_list(value)]
+        return [_convert(v, type_value, False) for v in _parse_list(value) if v != '']
     else:
         if type_value == bool:
             if value.lower() in {'yes', 'true', '1'}:
@@ -228,16 +228,13 @@ class ConfigParser(configparser.ConfigParser):
         f.seek(0)
         return f.read()
 
-    def is_valid(self, f: str) -> bool:
-        '''Verify that the given config file matches the specification.
+    def is_valid(self) -> bool:
+        '''Verify that the configparser matches the specification.
         '''
-        config = configparser.ConfigParser()
-        config.read(f)
-
         # check that every option given by f is in specification
-        for s in config.sections():
-            for o in config.options(s):
-                if config.has_option('DEFAULT', o):
+        for s in self.sections():
+            for o in self.options(s):
+                if self.has_option('DEFAULT', o):
                     continue
                 if not self.specification.has_option(s, o):
                     return False
@@ -250,7 +247,7 @@ class ConfigParser(configparser.ConfigParser):
                 specline = self.specification.get(s, o)
                 spec = _parse_specline(specline)
                 if spec.default is None:
-                    if not config.has_option(s, o):
+                    if not self.has_option(s, o):
                         return False
 
         # TODO: make sure values are the correct type

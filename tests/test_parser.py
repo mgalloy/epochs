@@ -9,6 +9,8 @@ import pytest
 import epochs
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_DIR = os.path.dirname(CURRENT_DIR)
+DATA_DIR = os.path.join(REPO_DIR, 'data')
 
 
 def test_str2type():
@@ -99,8 +101,8 @@ def test_parse_specline():
 
 
 def test_configparser():
-    cp = epochs.ConfigParser(os.path.join(CURRENT_DIR, 'spec.cfg'))
-    cp.read(os.path.join(CURRENT_DIR, 'good.cfg'))
+    cp = epochs.ConfigParser(os.path.join(DATA_DIR, 'spec.cfg'))
+    cp.read(os.path.join(DATA_DIR, 'user.cfg'))
 
     basedir = cp.get('logging', 'basedir')
     assert(basedir == '/Users/mgalloy/data')
@@ -114,9 +116,33 @@ def test_configparser():
     assert(max_version == 3)
     assert(type(max_version) == int)
 
-    wavelengths = cp.get('level1', 'wavelengths')
-    assert(len(wavelengths) == 3)
-    assert(type(wavelengths) == list)
-    assert(wavelengths[0] == '1074')
-    assert(wavelengths[1] == '1079')
-    assert(wavelengths[2] == '1083')
+    wavetypes = cp.get('level1', 'wavetypes')
+    assert(len(wavetypes) == 3)
+    assert(type(wavetypes) == list)
+    assert(wavetypes[0] == '1074')
+    assert(wavetypes[1] == '1079')
+    assert(wavetypes[2] == '1083')
+
+
+def test_configparser_is_valid():
+    cp = epochs.ConfigParser(os.path.join(DATA_DIR, 'spec.cfg'))
+    cp.read(os.path.join(DATA_DIR, 'user.cfg'))
+    assert(cp.is_valid())
+
+
+def test_configparser_is_notvalid():
+    cp = epochs.ConfigParser(os.path.join(DATA_DIR, 'spec.cfg'))
+    cp.read(os.path.join(DATA_DIR, 'site.cfg'))
+    assert(not cp.is_valid())   # no basedir which is required
+
+
+def test_inheritance():
+    cp = epochs.ConfigParser(os.path.join(DATA_DIR, 'spec.cfg'))
+    cp.read([os.path.join(DATA_DIR, 'site.cfg'),
+             os.path.join(DATA_DIR, 'user.cfg')])
+    max_version = cp.get('logging', 'max_version')
+    assert(max_version == 3)
+    assert(cp.is_valid())
+
+    max_width = cp.get('logging', 'max_width')
+    assert(max_width == 100)
