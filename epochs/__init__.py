@@ -7,7 +7,3 @@ __email__ = 'mgalloy@gmail.com'
 __version__ = '0.1.1'
 
 from .parser import EpochParser, ConfigParser
-
-
-#__all__ = ['parser']
-__all__ = []

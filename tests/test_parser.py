@@ -12,32 +12,32 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def test_str2type():
-    assert(epochs.parser.str2type('str') == str)
-    assert(epochs.parser.str2type('int') == int)
-    assert(epochs.parser.str2type('float') == float)
-    assert(epochs.parser.str2type('bool') == bool)
-    assert(epochs.parser.str2type('boolean') == bool)
+    assert(epochs.parser._str2type('str') == str)
+    assert(epochs.parser._str2type('int') == int)
+    assert(epochs.parser._str2type('float') == float)
+    assert(epochs.parser._str2type('bool') == bool)
+    assert(epochs.parser._str2type('boolean') == bool)
 
 
 @pytest.mark.xfail(raises=ValueError)
 def test_str2type_error():
-    t = epochs.parser.str2type('other')
+    t = epochs.parser._str2type('other')
 
 
 def test_convert():
-    value = epochs.parser.convert('True', bool, False)
+    value = epochs.parser._convert('True', bool, False)
     assert(value == True)
     assert(type(value) == bool)
 
-    value = epochs.parser.convert('False', bool, False)
+    value = epochs.parser._convert('False', bool, False)
     assert(value == False)
     assert(type(value) == bool)
 
-    value = epochs.parser.convert('1.23', float, False)
+    value = epochs.parser._convert('1.23', float, False)
     assert(abs(value - 1.23) < 0.001)
     assert(type(value) == float)
 
-    value = epochs.parser.convert('123', int, False)
+    value = epochs.parser._convert('123', int, False)
     assert(value == 123)
     assert(type(value) == int)
 
@@ -48,50 +48,50 @@ def lists_equal(lst1, lst2):
 
 
 def test_convert_list():
-    value = epochs.parser.convert('[a, b, c]', str, True)
+    value = epochs.parser._convert('[a, b, c]', str, True)
     lists_equal(value, ['a', 'b', 'c'])
     assert(type(value) == list)
 
 
 @pytest.mark.xfail(raises=ValueError)
 def test_convert_error():
-    value = epochs.parser.convert('other', bool, False)
+    value = epochs.parser._convert('other', bool, False)
 
 
 def test_parse_specline_truth():
     for v in ['True', 'true', 'Yes', 'yes']:
-        spec = epochs.parser.parse_specline(f'required={v}, type=int, default=1')
+        spec = epochs.parser._parse_specline(f'required={v}, type=int, default=1')
         assert(spec.required == True)
         assert(spec.type == int)
         assert(spec.default == 1)
 
 
 def test_parse_specline():
-    spec = epochs.parser.parse_specline('type=float, default=1')
+    spec = epochs.parser._parse_specline('type=float, default=1')
     assert(spec.required == False)
     assert(spec.type == float)
     assert(spec.default == 1.0)
     assert(spec.list == False)
 
-    spec = epochs.parser.parse_specline('default=1')
+    spec = epochs.parser._parse_specline('default=1')
     assert(spec.required == False)
     assert(spec.type == str)
     assert(spec.default == '1')
     assert(spec.list == False)
 
-    spec = epochs.parser.parse_specline('')
+    spec = epochs.parser._parse_specline('')
     assert(spec.required == False)
     assert(spec.type == str)
     assert(spec.default is None)
     assert(spec.list == False)
 
-    spec = epochs.parser.parse_specline('default="Boulder, CO"')
+    spec = epochs.parser._parse_specline('default="Boulder, CO"')
     assert(spec.required == False)
     assert(spec.type == str)
     assert(spec.default == 'Boulder, CO')
     assert(spec.list == False)
 
-    spec = epochs.parser.parse_specline('type=List[int], default="[1, 3, 7]"')
+    spec = epochs.parser._parse_specline('type=List[int], default="[1, 3, 7]"')
     assert(spec.required == False)
     assert(spec.type == int)
     lists_equal(spec.default, [1, 3, 7])

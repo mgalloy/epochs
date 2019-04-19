@@ -21,7 +21,7 @@ whitespace_re = re.compile('\s')
 listtypes_re  = re.compile('List\[(.*)\]')
 
 
-def parse_specline_tokens(specline: str) -> OptionSpec:
+def _parse_specline_tokens(specline: str) -> OptionSpec:
     '''Generator to tokenize spec line
 
     Parameters
@@ -66,7 +66,7 @@ def parse_specline_tokens(specline: str) -> OptionSpec:
         yield identifier
 
 
-def parse_list(list_expr):
+def _parse_list(list_expr):
     list_expr = list_expr.strip()
     if list_expr[0] != '[' or list_expr[-1] != ']':
         raise ValueError(f'invalid list expr "{list_expr}"')
@@ -74,7 +74,7 @@ def parse_list(list_expr):
     return list_expr.split(', ')
 
 
-def str2type(s: str) -> OptionValue:
+def _str2type(s: str) -> OptionValue:
     '''Convert a string type specification to the actual type
 
     Parameters
@@ -92,7 +92,7 @@ def str2type(s: str) -> OptionValue:
         raise ValueError(f'invalid type: {s}')
 
 
-def convert(value: str, type_value: type, is_list: bool) -> OptionValue:
+def _convert(value: str, type_value: type, is_list: bool=False) -> OptionValue:
     '''Convert a value to a given type
 
     Parameters
@@ -101,13 +101,15 @@ def convert(value: str, type_value: type, is_list: bool) -> OptionValue:
         value to convert
     type_value : type
         type to convert `value` to
+    is_list : bool
+        whether `value` is a list or just a scalar
 
     Returns
     -------
     scalar or List with same type as type_value
     '''
     if is_list:
-        return [convert(v, type_value, False) for v in parse_list(value)]
+        return [_convert(v, type_value, False) for v in _parse_list(value)]
     else:
         if type_value == bool:
             if value.lower() in {'yes', 'true', '1'}:
@@ -120,7 +122,7 @@ def convert(value: str, type_value: type, is_list: bool) -> OptionValue:
             return type_value(value)
 
 
-def parse_specline(specline) -> OptionSpec:
+def _parse_specline(specline) -> OptionSpec:
     '''Parse a spec line
 
     Parameters
@@ -133,7 +135,7 @@ def parse_specline(specline) -> OptionSpec:
     NamedTuple
         fields name, required, type, default
     '''
-    tokens = parse_specline_tokens(specline)
+    tokens = _parse_specline_tokens(specline)
 
     # default attributes
     required   = False
@@ -149,14 +151,14 @@ def parse_specline(specline) -> OptionSpec:
 
             # handle attribute
             if attr_name.lower() == 'required':
-                required = convert(attr_value, bool, False)
+                required = _convert(attr_value, bool, False)
             elif attr_name.lower() == 'type':
                 m = listtypes_re.match(attr_value)
                 if m:
-                    type_value = str2type(m[1])
+                    type_value = _str2type(m[1])
                     is_list = True
                 else:
-                    type_value = str2type(attr_value)
+                    type_value = _str2type(attr_value)
             elif attr_name.lower() == 'default':
                 default = attr_value
             else:
@@ -168,7 +170,7 @@ def parse_specline(specline) -> OptionSpec:
 
     # convert default value to spec type
     if default is not None:
-        default = convert(default, type_value, is_list)
+        default = _convert(default, type_value, is_list)
 
     return OptionSpec(required=required, type=type_value, default=default, list=is_list)
 
@@ -188,14 +190,14 @@ class ConfigParser(configparser.ConfigParser):
         '''Get an option using the type and default from the specification file
         '''
         specline = self.specification.get(section, option)
-        spec = parse_specline(specline)
+        spec = _parse_specline(specline)
 
         if not super().has_option(section, option):
             return spec.default
 
         value = super().get(section, option, raw=raw, **kwargs)
 
-        return value if raw else convert(value, spec.type, spec.list)
+        return value if raw else _convert(value, spec.type, spec.list)
 
     def _write(self, fileobject) -> None:
         max_len = 0
@@ -246,7 +248,7 @@ class ConfigParser(configparser.ConfigParser):
                 if self.specification.has_option('DEFAULT', o):
                     continue
                 specline = self.specification.get(s, o)
-                spec = parse_specline(specline)
+                spec = _parse_specline(specline)
                 if spec.default is None:
                     if not config.has_option(s, o):
                         return False
