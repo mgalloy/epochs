@@ -3,9 +3,12 @@
 
 """Tests for `epochs` package."""
 
+import os
 import pytest
 
 import epochs
+
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def test_str2type():
@@ -93,3 +96,16 @@ def test_parse_specline():
     assert(spec.type == int)
     lists_equal(spec.default, [1, 3, 7])
     assert(spec.list == True)
+
+
+def test_configparser():
+    cp = epochs.ConfigParser(os.path.join(CURRENT_DIR, 'spec.cfg'))
+    cp.read(os.path.join(CURRENT_DIR, 'good.cfg'))
+
+    basedir = cp.get('logging', 'basedir')
+    assert(basedir == '/Users/mgalloy/data')
+    assert(type(basedir) == str)
+
+    rotate = cp.get('logging', 'rotate')
+    assert(not rotate)
+    assert(type(rotate) == bool)
