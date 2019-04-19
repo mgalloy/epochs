@@ -195,7 +195,7 @@ class ConfigParser(configparser.ConfigParser):
 
         value = super().get(section, option, raw=raw, **kwargs)
 
-        return value if raw else convert(value, spec.type)
+        return value if raw else convert(value, spec.type, spec.list)
 
     def _write(self, fileobject) -> None:
         max_len = 0
