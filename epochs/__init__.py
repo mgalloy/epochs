@@ -6,7 +6,8 @@ __author__ = """Michael Galloy"""
 __email__ = 'mgalloy@gmail.com'
 __version__ = '0.1.0'
 
-from epochs.parser import EpochParser, ConfigParser
+from .parser import EpochParser, ConfigParser
 
 
-__all__ = ['parser']
+#__all__ = ['parser']
+__all__ = []
