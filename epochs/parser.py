@@ -4,6 +4,7 @@
 
 import collections
 import configparser
+import io
 import re
 from typing import List, TypeVar
 
@@ -180,15 +181,24 @@ class ConfigParser(configparser.ConfigParser):
     specification and uses types/defaults from the specification.
     '''
 
-    def __init__(self, spec_filename: str, **kwargs) -> None:
+    def __init__(self, spec_filename: str=None, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.specification = configparser.ConfigParser()
-        self.specification.read(spec_filename)
+
+        self.spec_filename = spec_filename
+
+        if spec_filename is None:
+            self.specification = None
+        else:
+            self.specification = configparser.ConfigParser()
+            self.specification.read(spec_filename)
 
     def get(self, section: str, option: str, raw=False,
             **kwargs) -> OptionValue:
         '''Get an option using the type and default from the specification file
         '''
+        if self.specification is None:
+            return super().get(section, option, raw=raw, **kwargs)
+
         specline = self.specification.get(section, option)
         spec = _parse_specline(specline)
 
@@ -212,15 +222,18 @@ class ConfigParser(configparser.ConfigParser):
             fileobject.write(f'{new_line}[{s}]\n')
             first_section = False
             for o in self.specification.options(s):
-                v = self.typed_get(s, o)
+                v = self.get(s, o)
                 fileobject.write(f'{o:{max_len}s} = {v}\n')
 
-    def write(self, file) -> None:
+    def write(self, file, space_around_delimiters=True) -> None:
         if isinstance(file, str):
             with open(file, 'w') as f:
                 self._write(f)
         else:
             self._write(file)
+
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}("{self.spec_filename}")'
 
     def __str__(self) -> str:
         f = io.StringIO()
@@ -229,8 +242,12 @@ class ConfigParser(configparser.ConfigParser):
         return f.read()
 
     def is_valid(self) -> bool:
-        '''Verify that the configparser matches the specification.
+        '''Verify that the configparser matches the specification. A
+        configparser without a spec is automatically valid.
         '''
+        if self.specification is None:
+            return True
+
         # check that every option given by f is in specification
         for s in self.sections():
             for o in self.options(s):
