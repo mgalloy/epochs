@@ -109,3 +109,14 @@ def test_configparser():
     rotate = cp.get('logging', 'rotate')
     assert(not rotate)
     assert(type(rotate) == bool)
+
+    max_version = cp.get('logging', 'max_version')
+    assert(max_version == 3)
+    assert(type(max_version) == int)
+
+    wavelengths = cp.get('level1', 'wavelengths')
+    assert(len(wavelengths) == 3)
+    assert(type(wavelengths) == list)
+    assert(wavelengths[0] == '1074')
+    assert(wavelengths[1] == '1079')
+    assert(wavelengths[2] == '1083')
