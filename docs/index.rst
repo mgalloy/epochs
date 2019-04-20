@@ -8,6 +8,7 @@ Welcome to epochs's documentation!
    readme
    installation
    usage
+   spec
    modules
    contributing
    authors
