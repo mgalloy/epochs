@@ -14,6 +14,7 @@ OptionValue = TypeVar('OptionValue',
                       List[bool], List[float], List[int], List[str])
 
 OptionSpec = collections.namedtuple('OptionSpec', 'required type default list')
+OptionSpec.__doc__ = '''Specification for an option'''
 
 TYPES = {'bool': bool, 'boolean': bool, 'float': float, 'int': int, 'str': str}
 
@@ -242,8 +243,8 @@ class ConfigParser(configparser.ConfigParser):
         return f.read()
 
     def is_valid(self) -> bool:
-        '''Verify that the configparser matches the specification. A
-        configparser without a spec is automatically valid.
+        '''Verify that the `configparser` matches the specification. A
+        `configparser` without a spec is automatically valid.
         '''
         if self.specification is None:
             return True
