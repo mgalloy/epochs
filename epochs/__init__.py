@@ -4,6 +4,6 @@
 
 __author__ = """Michael Galloy"""
 __email__ = 'mgalloy@gmail.com'
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 
 from .parser import EpochParser, ConfigParser
