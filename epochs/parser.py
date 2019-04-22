@@ -4,14 +4,18 @@
 
 import collections
 import configparser
+import datetime
 import io
 import re
 from typing import List, TypeVar
+
+import dateutil.parser
 
 
 OptionValue = TypeVar('OptionValue',
                       bool, float, int, str,
                       List[bool], List[float], List[int], List[str])
+DateValue = TypeVar('DateValue', str, datetime.datetime)
 
 OptionSpec = collections.namedtuple('OptionSpec', 'required type default list')
 OptionSpec.__doc__ = '''Specification for an option'''
@@ -135,7 +139,7 @@ def _parse_specline(specline) -> OptionSpec:
     Returns
     -------
     NamedTuple
-        fields name, required, type, default
+        fields required, type, default, and list
     '''
     tokens = _parse_specline_tokens(specline)
 
@@ -193,11 +197,11 @@ class ConfigParser(configparser.ConfigParser):
             self.specification = configparser.ConfigParser()
             self.specification.read(spec_filename)
 
-    def get(self, section: str, option: str, raw=False,
-            **kwargs) -> OptionValue:
+    def get(self, section: str, option: str,
+            raw=False, use_spec=True, **kwargs) -> OptionValue:
         '''Get an option using the type and default from the specification file
         '''
-        if self.specification is None:
+        if self.specification is None or use_spec == False:
             return super().get(section, option, raw=raw, **kwargs)
 
         specline = self.specification.get(section, option)
@@ -242,6 +246,8 @@ class ConfigParser(configparser.ConfigParser):
         f.seek(0)
         return f.read()
 
+    # TODO: probably should have option to not check certain aspects, e.g.,
+    # sometimes its probably OK to have extra options not in the spec
     def is_valid(self) -> bool:
         '''Verify that the `configparser` matches the specification. A
         `configparser` without a spec is automatically valid.
@@ -273,5 +279,67 @@ class ConfigParser(configparser.ConfigParser):
         return True
 
 
-class EpochParser():
-    pass
+def _parse_datetime(d : DateValue) -> datetime.datetime:
+    if isinstance(d, datetime.datetime):
+        return d
+    else:
+        return dateutil.parser.parse(d)
+
+
+class EpochParser(ConfigParser):
+    '''EpochParser parses config files with dates as section name. Retrieving an
+    option for a given date returns the option value on the date closest, but
+    before, the given date.
+    '''
+
+    def __init__(self, spec_filename: str=None, **kwargs) -> None:
+        super().__init__(spec_filename, **kwargs)
+        self._date = None
+
+    @property
+    def date(self):
+        return self._date
+
+    @date.setter
+    def date(self, date: DateValue):
+        self._date = _parse_datetime(date)
+
+    def get(self, option: str, date: DateValue=None, raw=False, **kwargs) -> OptionValue:
+        dt = self._date if date is None else _parse_datetime(date)
+        if dt is None:
+            raise KeyError('no date for access given')
+
+        specs = {k: _parse_specline(v) for k, v in self.specification.defaults().items()}
+
+        epoch_names = self.sections()
+
+        epoch_dts = [_parse_datetime(s) for s in epoch_names]
+        sorted_epoch_dts = sorted(zip(epoch_dts, epoch_names), key=lambda x: x[0])
+
+        value = specs[option].default
+        for e_dt, e_name in sorted_epoch_dts:
+            if e_dt <= dt and self.has_option(e_name, option):
+                value = _convert(super().get(e_name, option, raw=True, use_spec=False),
+                                 specs[option].type,
+                                 specs[option].list)
+
+        return value
+
+    def is_valid(self) -> bool:
+        if self.specification is None:
+            return True
+
+        # check to make sure sections are dates
+        for s in self.sections():
+            try:
+                d = dateutil.parser.parse(s)
+            except ValueError:
+                return False
+
+        # check options are in spec
+        for s in self.sections():
+            for o in self.options(s):
+                if not self.specification.has_option('DEFAULT', o):
+                    return False
+
+        return True

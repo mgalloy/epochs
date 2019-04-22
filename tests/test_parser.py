@@ -146,3 +146,70 @@ def test_inheritance():
 
     max_width = cp.get('logging', 'max_width')
     assert(max_width == 100)
+
+
+def test_epochparser():
+    ep = epochs.EpochParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
+    ep.read(os.path.join(DATA_DIR, 'epochs.cfg'))
+
+    cal_version = ep.get('cal_version', '2017-12-31')
+    assert(type(cal_version) == int)
+    assert(cal_version == 0)
+
+    cal_version = ep.get('cal_version', '2018-01-01 06:00:00')
+    assert(type(cal_version) == int)
+    assert(cal_version == 1)
+
+    cal_version = ep.get('cal_version', '2018-01-01 10:00:00')
+    assert(type(cal_version) == int)
+    assert(cal_version == 2)
+
+    cal_version = ep.get('cal_version', '2018-01-02 10:00:00')
+    assert(type(cal_version) == int)
+    assert(cal_version == 2)
+
+    cal_version = ep.get('cal_version', '2018-01-03 06:00:00')
+    assert(type(cal_version) == int)
+    assert(cal_version == 3)
+
+
+def test_epochparser_property():
+    ep = epochs.EpochParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
+    ep.read(os.path.join(DATA_DIR, 'epochs.cfg'))
+
+    ep.date = '2017-12-31'
+    cal_version = ep.get('cal_version')
+    assert(type(cal_version) == int)
+    assert(cal_version == 0)
+
+    ep.date = '2018-01-01 06:00:00'
+    cal_version = ep.get('cal_version')
+    assert(type(cal_version) == int)
+    assert(cal_version == 1)
+
+    ep.date = '2018-01-01 10:00:00'
+    cal_version = ep.get('cal_version')
+    assert(type(cal_version) == int)
+    assert(cal_version == 2)
+
+    ep.date = '2018-01-02 10:00:00'
+    cal_version = ep.get('cal_version')
+    assert(type(cal_version) == int)
+    assert(cal_version == 2)
+
+    ep.date = '2018-01-03 06:00:00'
+    cal_version = ep.get('cal_version')
+    assert(type(cal_version) == int)
+    assert(cal_version == 3)
+
+
+def test_epochparser_is_valid():
+    cp = epochs.ConfigParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
+    cp.read(os.path.join(DATA_DIR, 'epochs_.cfg'))
+    assert(cp.is_valid())
+
+
+def test_epochparser_is_notvalid():
+    cp = epochs.ConfigParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
+    cp.read(os.path.join(DATA_DIR, 'epochs_extra.cfg'))
+    assert(not cp.is_valid())   # has "extra_option" which is not in spec
