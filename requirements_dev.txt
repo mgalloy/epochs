@@ -10,3 +10,5 @@ twine==1.13.0
 
 pytest==4.4.1
 pytest-runner==4.4
+
+python-dateutil==2.8.0
