@@ -304,7 +304,8 @@ class ConfigParser(configparser.ConfigParser):
         if not allow_extra_options:
             for s in self.sections():
                 for o in self.options(s):
-                    if self.has_option('DEFAULT', o): continue
+                    if self.has_option('DEFAULT', o):
+                        continue
                     if not self.specification.has_option(s, o):
                         print(f'section={s}, option={o}')
                         return False
@@ -312,7 +313,8 @@ class ConfigParser(configparser.ConfigParser):
         # check that all options without a default value are given by f
         for s in self.specification.sections():
             for o in self.specification.options(s):
-                if self.specification.has_option('DEFAULT', o): continue
+                if self.specification.has_option('DEFAULT', o):
+                    continue
                 specline = self.specification.get(s, o)
                 spec = _parse_specline(specline)
                 if spec.required and not self.has_option(s, o):
@@ -368,7 +370,7 @@ class EpochParser():
     def formats(self):
         return self._formats
 
-    @date.setter
+    @formats.setter
     def formats(self, formats: List[str]):
         '''
         Parameters
