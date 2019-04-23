@@ -14,3 +14,6 @@ History
 ------------------
 * better repr and str representations
 
+0.2.0 (2019-04-22)
+------------------
+* basic epoch parser
