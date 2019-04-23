@@ -324,13 +324,6 @@ class ConfigParser(configparser.ConfigParser):
         return True
 
 
-def _parse_datetime(d: DateValue) -> datetime.datetime:
-    if isinstance(d, datetime.datetime):
-        return d
-    else:
-        return dateutil.parser.parse(d)
-
-
 class EpochParser(ConfigParser):
     '''EpochParser parses config files with dates as section name. Retrieving an
     option for a given date returns the option value on the date closest, but
@@ -340,6 +333,7 @@ class EpochParser(ConfigParser):
     def __init__(self, spec_filename: str=None, **kwargs) -> None:
         super().__init__(spec_filename, **kwargs)
         self._date = None
+        self._formats = None
 
     @property
     def date(self):
@@ -353,7 +347,35 @@ class EpochParser(ConfigParser):
         date : DateValue
             date as a string or ``datetime.datetime``
         '''
-        self._date = _parse_datetime(date)
+        self._date = self._parse_datetime(date)
+
+    def _parse_datetime(self, d: DateValue) -> datetime.datetime:
+        if isinstance(d, datetime.datetime):
+            return d
+        else:
+            if self._formats is None:
+                return dateutil.parser.parse(d)
+            else:
+                for f in self._formats:
+                    try:
+                        dt = datetime.datetime.strptime(d, f)
+                        return dt
+                    except ValueError:
+                        pass
+
+    @property
+    def formats(self):
+        return self._formats
+
+    @date.setter
+    def formats(self, formats: List[str]):
+        '''
+        Parameters
+        ----------
+        formats : List[str]
+            formats to use for parsing dates via ``datetime.datetime.strptime``
+        '''
+        self._formats = formats
 
     def get(self, option: str,
             date: DateValue=None, raw: bool=False, **kwargs) -> OptionValue:
@@ -368,7 +390,7 @@ class EpochParser(ConfigParser):
         raw : bool
             set to True is disable interpolation
         '''
-        dt = self._date if date is None else _parse_datetime(date)
+        dt = self._date if date is None else self._parse_datetime(date)
         if dt is None:
             raise KeyError('no date for access given')
 
@@ -377,7 +399,7 @@ class EpochParser(ConfigParser):
 
         epoch_names = self.sections()
 
-        epoch_dts = [_parse_datetime(s) for s in epoch_names]
+        epoch_dts = [self._parse_datetime(s) for s in epoch_names]
         sorted_epoch_dts = sorted(zip(epoch_dts, epoch_names),
                                   key=lambda x: x[0])
 

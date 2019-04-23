@@ -205,12 +205,47 @@ def test_epochparser_property():
 
 
 def test_epochparser_is_valid():
-    cp = epochs.ConfigParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
-    cp.read(os.path.join(DATA_DIR, 'epochs_.cfg'))
-    assert(cp.is_valid())
+    ep = epochs.EpochParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
+    ep.read(os.path.join(DATA_DIR, 'epochs_.cfg'))
+    assert(ep.is_valid())
 
 
 def test_epochparser_is_notvalid():
-    cp = epochs.ConfigParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
-    cp.read(os.path.join(DATA_DIR, 'epochs_extra.cfg'))
-    assert(not cp.is_valid())   # has "extra_option" which is not in spec
+    ep = epochs.EpochParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
+    ep.read(os.path.join(DATA_DIR, 'epochs_extra.cfg'))
+    assert(not ep.is_valid())   # has "extra_option" which is not in spec
+
+def test_epoch_parser_interp():
+    ep = epochs.EpochParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
+    ep.read(os.path.join(DATA_DIR, 'epochs_interp.cfg'))
+
+    dist_filename = ep.get('dist_filename', '2018-01-02')
+
+    assert(type(dist_filename) == str)
+    # TODO: the below will fail
+    #assert(dist_filename == '/export/data1/Data/dist-1.ncdf')
+
+def test_epoch_parser_format():
+    ep = epochs.EpochParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
+    ep.formats = ['%Y%m%d', '%Y%m%d.%H%M%S']
+    ep.read(os.path.join(DATA_DIR, 'epochs_format.cfg'))
+
+    cal_version = ep.get('cal_version', '20171231')
+    assert(type(cal_version) == int)
+    assert(cal_version == 0)
+
+    cal_version = ep.get('cal_version', '20180101.060000')
+    assert(type(cal_version) == int)
+    assert(cal_version == 1)
+
+    cal_version = ep.get('cal_version', '20180101.100000')
+    assert(type(cal_version) == int)
+    assert(cal_version == 2)
+
+    cal_version = ep.get('cal_version', '20180102.100000')
+    assert(type(cal_version) == int)
+    assert(cal_version == 2)
+
+    cal_version = ep.get('cal_version', '20180103.060000')
+    assert(type(cal_version) == int)
+    assert(cal_version == 3)
