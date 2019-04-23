@@ -105,7 +105,7 @@ def test_configparser():
     cp.read(os.path.join(DATA_DIR, 'user.cfg'))
 
     basedir = cp.get('logging', 'basedir')
-    assert(basedir == '/Users/mgalloy/data')
+    assert(basedir == '/export/data1/Data/logs.master')
     assert(type(basedir) == str)
 
     rotate = cp.get('logging', 'rotate')

@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 
-"""Main module."""
+"""Module defining parsers. The ``ConfigParser`` is an extended
+``configparser`` that can use a specification file to define types/default
+values for the config files options, as well as to validate the file against.
+The ``EpochParser`` is a parser which organizes options by date. An option
+value is found by matching the option in the section with the latest datetime
+before the given datetime."""
 
 import collections
 import configparser
 import datetime
 import io
 import re
-from typing import List, TypeVar
+from typing import List, TypeVar, TextIO
 
 import dateutil.parser
 
@@ -16,6 +21,7 @@ OptionValue = TypeVar('OptionValue',
                       bool, float, int, str,
                       List[bool], List[float], List[int], List[str])
 DateValue = TypeVar('DateValue', str, datetime.datetime)
+FileType = TypeVar('FileType', str, TextIO)
 
 OptionSpec = collections.namedtuple('OptionSpec', 'required type default list')
 OptionSpec.__doc__ = '''Specification for an option'''
@@ -108,7 +114,7 @@ def _convert(value: str, type_value: type, is_list: bool=False) -> OptionValue:
     type_value : type
         type to convert `value` to
     is_list : bool
-        whether `value` is a list or just a scalar
+        whether ``value`` is a list or just a scalar
 
     Returns
     -------
@@ -128,7 +134,7 @@ def _convert(value: str, type_value: type, is_list: bool=False) -> OptionValue:
             return type_value(value)
 
 
-def _parse_specline(specline) -> OptionSpec:
+def _parse_specline(specline: str) -> OptionSpec:
     '''Parse a spec line
 
     Parameters
@@ -187,6 +193,11 @@ class ConfigParser(configparser.ConfigParser):
     '''
 
     def __init__(self, spec_filename: str=None, **kwargs) -> None:
+        '''Create a ConfigParser object
+
+        spec_filename : str
+            file to use as a specification
+        '''
         super().__init__(**kwargs)
 
         self.spec_filename = spec_filename
@@ -198,8 +209,19 @@ class ConfigParser(configparser.ConfigParser):
             self.specification.read(spec_filename)
 
     def get(self, section: str, option: str,
-            raw=False, use_spec=True, **kwargs) -> OptionValue:
+            raw: bool=False, use_spec: bool=True, **kwargs) -> OptionValue:
         '''Get an option using the type and default from the specification file
+
+        Parameters
+        ----------
+        section : str
+            section name
+        option : str
+            option name
+        raw : bool
+            set to True to not interpolate
+        use_spec : bool
+            set to False to not use the specification
         '''
         if self.specification is None or use_spec == False:
             return super().get(section, option, raw=raw, **kwargs)
@@ -214,7 +236,14 @@ class ConfigParser(configparser.ConfigParser):
 
         return value if raw else _convert(value, spec.type, spec.list)
 
-    def _write(self, fileobject) -> None:
+    def _write(self, fileobject: TextIO) -> None:
+        '''Write the configuration to a file-like object
+
+        Parameters
+        ----------
+        fileobject : TextIO
+            file-like object to write to
+        '''
         max_len = 0
         for s in self.specification.sections():
             for o in self.specification.options(s):
@@ -230,7 +259,16 @@ class ConfigParser(configparser.ConfigParser):
                 v = self.get(s, o)
                 fileobject.write(f'{o:{max_len}s} = {v}\n')
 
-    def write(self, file, space_around_delimiters=True) -> None:
+    def write(self, file: FileType, space_around_delimiters: bool=True) -> None:
+        '''Write config file to a file-like object
+
+        Parameters
+        ----------
+        file : FileType
+            file-like object to write to
+        space_around_delimiters : bool
+            whether to put spaces around the delimiter, i.e., ":" or "="
+        '''
         if isinstance(file, str):
             with open(file, 'w') as f:
                 self._write(f)
@@ -238,9 +276,13 @@ class ConfigParser(configparser.ConfigParser):
             self._write(file)
 
     def __repr__(self) -> str:
+        '''Representation of config file
+        '''
         return f'{self.__class__.__name__}("{self.spec_filename}")'
 
     def __str__(self) -> str:
+        '''Config file as a string
+        '''
         f = io.StringIO()
         self._write(f)
         f.seek(0)
@@ -249,8 +291,8 @@ class ConfigParser(configparser.ConfigParser):
     # TODO: probably should have option to not check certain aspects, e.g.,
     # sometimes its probably OK to have extra options not in the spec
     def is_valid(self) -> bool:
-        '''Verify that the `configparser` matches the specification. A
-        `configparser` without a spec is automatically valid.
+        '''Verify that the ``ConfigParser`` matches the specification. A
+        ``ConfigParser`` without a spec is automatically valid.
         '''
         if self.specification is None:
             return True
@@ -302,9 +344,27 @@ class EpochParser(ConfigParser):
 
     @date.setter
     def date(self, date: DateValue):
+        '''
+        Parameters
+        ----------
+        date : DateValue
+            date as a string or ``datetime.datetime``
+        '''
         self._date = _parse_datetime(date)
 
-    def get(self, option: str, date: DateValue=None, raw=False, **kwargs) -> OptionValue:
+    def get(self, option: str,
+            date: DateValue=None, raw: bool=False, **kwargs) -> OptionValue:
+        '''Get an option using the type and default from the specification file
+
+        Parameters
+        ----------
+        option : str
+            option name
+        date : FileValue
+            date as a string or ``datetime.datetime``
+        raw : bool
+            set to True is disable interpolation
+        '''
         dt = self._date if date is None else _parse_datetime(date)
         if dt is None:
             raise KeyError('no date for access given')
@@ -326,6 +386,9 @@ class EpochParser(ConfigParser):
         return value
 
     def is_valid(self) -> bool:
+        '''Verify that the `EpochParser` matches the specification. A
+        `configparser` without a spec is automatically valid.
+        '''
         if self.specification is None:
             return True
 
