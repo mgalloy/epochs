@@ -34,7 +34,7 @@ The main features of epochs are:
 * Parse date-based configuration files and retrieve values based on datetime.
 * Validate configuration files, both normal and epoch date-based ones, against a specification.
 
-For example, for a configuration file, `epochs.cfg`, such as::
+For example, for a configuration file, ``epochs.cfg``, such as::
 
   [2019-04-09 20:27:15]
   value   : 3
