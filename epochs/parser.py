@@ -30,7 +30,7 @@ TYPES = {'bool': bool, 'boolean': bool, 'float': float, 'int': int, 'str': str}
 
 identifier_re = re.compile('[.\w\[\]]')
 whitespace_re = re.compile('\s')
-listtypes_re  = re.compile('List\[(.*)\]')
+listtypes_re = re.compile('List\[(.*)\]')
 
 
 def _parse_specline_tokens(specline: str) -> OptionSpec:
@@ -121,7 +121,8 @@ def _convert(value: str, type_value: type, is_list: bool=False) -> OptionValue:
     scalar or List with same type as type_value
     '''
     if is_list:
-        return [_convert(v, type_value, False) for v in _parse_list(value) if v != '']
+        return [_convert(v, type_value, False)
+                for v in _parse_list(value) if v != '']
     else:
         if type_value == bool:
             if value.lower() in {'yes', 'true', '1'}:
@@ -150,15 +151,15 @@ def _parse_specline(specline: str) -> OptionSpec:
     tokens = _parse_specline_tokens(specline)
 
     # default attributes
-    required   = False
+    required = False
     type_value = str
-    default    = None
-    is_list    = False
+    default = None
+    is_list = False
 
     try:
         while True:
-            attr_name  = next(tokens)
-            equals     = next(tokens)
+            attr_name = next(tokens)
+            next(tokens)   # equals sign
             attr_value = next(tokens)
 
             # handle attribute
@@ -174,9 +175,9 @@ def _parse_specline(specline: str) -> OptionSpec:
             elif attr_name.lower() == 'default':
                 default = attr_value
             else:
-                raise ValueError(f'invalid attribute {attr}')
+                raise ValueError(f'invalid attribute {attr_name}')
 
-            comma      = next(tokens)
+            next(tokens)   # comma
     except StopIteration:
         pass
 
@@ -184,7 +185,8 @@ def _parse_specline(specline: str) -> OptionSpec:
     if default is not None:
         default = _convert(default, type_value, is_list)
 
-    return OptionSpec(required=required, type=type_value, default=default, list=is_list)
+    return OptionSpec(required=required, type=type_value,
+                      default=default, list=is_list)
 
 
 class ConfigParser(configparser.ConfigParser):
@@ -223,7 +225,7 @@ class ConfigParser(configparser.ConfigParser):
         use_spec : bool
             set to False to not use the specification
         '''
-        if self.specification is None or use_spec == False:
+        if self.specification is None or use_spec is False:
             return super().get(section, option, raw=raw, **kwargs)
 
         specline = self.specification.get(section, option)
@@ -259,7 +261,8 @@ class ConfigParser(configparser.ConfigParser):
                 v = self.get(s, o)
                 fileobject.write(f'{o:{max_len}s} = {v}\n')
 
-    def write(self, file: FileType, space_around_delimiters: bool=True) -> None:
+    def write(self, file: FileType,
+              space_around_delimiters: bool=True) -> None:
         '''Write config file to a file-like object
 
         Parameters
@@ -321,7 +324,7 @@ class ConfigParser(configparser.ConfigParser):
         return True
 
 
-def _parse_datetime(d : DateValue) -> datetime.datetime:
+def _parse_datetime(d: DateValue) -> datetime.datetime:
     if isinstance(d, datetime.datetime):
         return d
     else:
@@ -369,17 +372,20 @@ class EpochParser(ConfigParser):
         if dt is None:
             raise KeyError('no date for access given')
 
-        specs = {k: _parse_specline(v) for k, v in self.specification.defaults().items()}
+        specs = {k: _parse_specline(v)
+                 for k, v in self.specification.defaults().items()}
 
         epoch_names = self.sections()
 
         epoch_dts = [_parse_datetime(s) for s in epoch_names]
-        sorted_epoch_dts = sorted(zip(epoch_dts, epoch_names), key=lambda x: x[0])
+        sorted_epoch_dts = sorted(zip(epoch_dts, epoch_names),
+                                  key=lambda x: x[0])
 
         value = specs[option].default
         for e_dt, e_name in sorted_epoch_dts:
             if e_dt <= dt and self.has_option(e_name, option):
-                value = _convert(super().get(e_name, option, raw=True, use_spec=False),
+                value = _convert(super().get(e_name, option,
+                                             raw=True, use_spec=False),
                                  specs[option].type,
                                  specs[option].list)
 
@@ -395,7 +401,7 @@ class EpochParser(ConfigParser):
         # check to make sure sections are dates
         for s in self.sections():
             try:
-                d = dateutil.parser.parse(s)
+                dateutil.parser.parse(s)
             except ValueError:
                 return False
 

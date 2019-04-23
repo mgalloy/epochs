@@ -23,16 +23,16 @@ def test_str2type():
 
 @pytest.mark.xfail(raises=ValueError)
 def test_str2type_error():
-    t = epochs.parser._str2type('other')
+    epochs.parser._str2type('other')
 
 
 def test_convert():
     value = epochs.parser._convert('True', bool, False)
-    assert(value == True)
+    assert(value)
     assert(type(value) == bool)
 
     value = epochs.parser._convert('False', bool, False)
-    assert(value == False)
+    assert(value is False)
     assert(type(value) == bool)
 
     value = epochs.parser._convert('1.23', float, False)
@@ -57,47 +57,48 @@ def test_convert_list():
 
 @pytest.mark.xfail(raises=ValueError)
 def test_convert_error():
-    value = epochs.parser._convert('other', bool, False)
+    epochs.parser._convert('other', bool, False)
 
 
 def test_parse_specline_truth():
     for v in ['True', 'true', 'Yes', 'yes']:
-        spec = epochs.parser._parse_specline(f'required={v}, type=int, default=1')
-        assert(spec.required == True)
+        spec_line = f'required={v}, type=int, default=1'
+        spec = epochs.parser._parse_specline(spec_line)
+        assert(spec.required)
         assert(spec.type == int)
         assert(spec.default == 1)
 
 
 def test_parse_specline():
     spec = epochs.parser._parse_specline('type=float, default=1')
-    assert(spec.required == False)
+    assert(spec.required is False)
     assert(spec.type == float)
     assert(spec.default == 1.0)
-    assert(spec.list == False)
+    assert(spec.list is False)
 
     spec = epochs.parser._parse_specline('default=1')
-    assert(spec.required == False)
+    assert(spec.required is False)
     assert(spec.type == str)
     assert(spec.default == '1')
-    assert(spec.list == False)
+    assert(spec.list is False)
 
     spec = epochs.parser._parse_specline('')
-    assert(spec.required == False)
+    assert(spec.required is False)
     assert(spec.type == str)
     assert(spec.default is None)
-    assert(spec.list == False)
+    assert(spec.list is False)
 
     spec = epochs.parser._parse_specline('default="Boulder, CO"')
-    assert(spec.required == False)
+    assert(spec.required is False)
     assert(spec.type == str)
     assert(spec.default == 'Boulder, CO')
-    assert(spec.list == False)
+    assert(spec.list is False)
 
     spec = epochs.parser._parse_specline('type=List[int], default="[1, 3, 7]"')
-    assert(spec.required == False)
+    assert(spec.required is False)
     assert(spec.type == int)
     lists_equal(spec.default, [1, 3, 7])
-    assert(spec.list == True)
+    assert(spec.list)
 
 
 def test_configparser():
