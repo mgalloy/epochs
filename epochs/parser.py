@@ -246,18 +246,20 @@ class ConfigParser(configparser.ConfigParser):
         fileobject : TextIO
             file-like object to write to
         '''
+        cp = self.specification if self.specification is not None else self
+
         max_len = 0
-        for s in self.specification.sections():
-            for o in self.specification.options(s):
+        for s in cp.sections():
+            for o in cp.options(s):
                 max_len = max(max_len, len(o))
 
         new_line = '\n'
         first_section = True
-        for s in self.specification.sections():
+        for s in cp.sections():
             new_line = '' if first_section else '\n'
             fileobject.write(f'{new_line}[{s}]\n')
             first_section = False
-            for o in self.specification.options(s):
+            for o in cp.options(s):
                 v = self.get(s, o)
                 fileobject.write(f'{o:{max_len}s} = {v}\n')
 
@@ -291,9 +293,7 @@ class ConfigParser(configparser.ConfigParser):
         f.seek(0)
         return f.read()
 
-    # TODO: probably should have option to not check certain aspects, e.g.,
-    # sometimes its probably OK to have extra options not in the spec
-    def is_valid(self) -> bool:
+    def is_valid(self, allow_extra_options: bool=False) -> bool:
         '''Verify that the ``ConfigParser`` matches the specification. A
         ``ConfigParser`` without a spec is automatically valid.
         '''
@@ -301,37 +301,38 @@ class ConfigParser(configparser.ConfigParser):
             return True
 
         # check that every option given by f is in specification
-        for s in self.sections():
-            for o in self.options(s):
-                if self.has_option('DEFAULT', o):
-                    continue
-                if not self.specification.has_option(s, o):
-                    return False
+        if not allow_extra_options:
+            for s in self.sections():
+                for o in self.options(s):
+                    if self.has_option('DEFAULT', o): continue
+                    if not self.specification.has_option(s, o):
+                        print(f'section={s}, option={o}')
+                        return False
 
         # check that all options without a default value are given by f
         for s in self.specification.sections():
             for o in self.specification.options(s):
-                if self.specification.has_option('DEFAULT', o):
-                    continue
+                if self.specification.has_option('DEFAULT', o): continue
                 specline = self.specification.get(s, o)
                 spec = _parse_specline(specline)
-                if spec.default is None:
-                    if not self.has_option(s, o):
-                        return False
+                if spec.required and not self.has_option(s, o):
+                    return False
 
-        # TODO: make sure values are the correct type
+        # TODO: make sure values are the correct type?
 
         return True
 
 
-class EpochParser(ConfigParser):
+class EpochParser():
     '''EpochParser parses config files with dates as section name. Retrieving an
     option for a given date returns the option value on the date closest, but
     before, the given date.
     '''
 
     def __init__(self, spec_filename: str=None, **kwargs) -> None:
-        super().__init__(spec_filename, **kwargs)
+        self.spec = ConfigParser(spec_filename, **kwargs)
+        self.config = ConfigParser(**kwargs)
+
         self._date = None
         self._formats = None
 
@@ -377,8 +378,14 @@ class EpochParser(ConfigParser):
         '''
         self._formats = formats
 
-    def get(self, option: str,
-            date: DateValue=None, raw: bool=False, **kwargs) -> OptionValue:
+    def read(self, files):
+        '''Attempt to read and parse an iterable of filenames, returning a list
+        of filenames which were successfully parsed.
+        '''
+        return self.config.read(files)
+
+    def get(self, option: str, date: DateValue=None, raw: bool=False,
+            **kwargs) -> OptionValue:
         '''Get an option using the type and default from the specification file
 
         Parameters
@@ -395,9 +402,9 @@ class EpochParser(ConfigParser):
             raise KeyError('no date for access given')
 
         specs = {k: _parse_specline(v)
-                 for k, v in self.specification.defaults().items()}
+                 for k, v in self.spec.specification.defaults().items()}
 
-        epoch_names = self.sections()
+        epoch_names = self.config.sections()
 
         epoch_dts = [self._parse_datetime(s) for s in epoch_names]
         sorted_epoch_dts = sorted(zip(epoch_dts, epoch_names),
@@ -405,32 +412,72 @@ class EpochParser(ConfigParser):
 
         value = specs[option].default
         for e_dt, e_name in sorted_epoch_dts:
-            if e_dt <= dt and self.has_option(e_name, option):
-                value = _convert(super().get(e_name, option,
-                                             raw=True, use_spec=False),
+            if e_dt <= dt and self.config.has_option(e_name, option):
+                value = _convert(self.config.get(e_name, option),
                                  specs[option].type,
                                  specs[option].list)
 
         return value
 
-    def is_valid(self) -> bool:
+    def _write(self, fileobject: TextIO) -> None:
+        '''Write the configuration to a file-like object
+
+        Parameters
+        ----------
+        fileobject : TextIO
+            file-like object to write to
+        '''
+        self.config.write(fileobject)
+
+    def write(self, file: FileType,
+              space_around_delimiters: bool=True) -> None:
+        '''Write config file to a file-like object
+
+        Parameters
+        ----------
+        file : FileType
+            file-like object to write to
+        space_around_delimiters : bool
+            whether to put spaces around the delimiter, i.e., ":" or "="
+        '''
+        if isinstance(file, str):
+            with open(file, 'w') as f:
+                self._write(f, space_around_delimiters=space_around_delimiters)
+        else:
+            self._write(file, space_around_delimiters=space_around_delimiters)
+
+    def __repr__(self) -> str:
+        '''Representation of config file
+        '''
+        return f'{self.__class__.__name__}("{self.spec.spec_filename}")'
+
+    def __str__(self) -> str:
+        '''Config file as a string
+        '''
+        f = io.StringIO()
+        self._write(f)
+        f.seek(0)
+        return f.read()
+
+    def is_valid(self, allow_extra_options: bool=False) -> bool:
         '''Verify that the `EpochParser` matches the specification. A
         `configparser` without a spec is automatically valid.
         '''
-        if self.specification is None:
+        if self.spec is None:
             return True
 
         # check to make sure sections are dates
-        for s in self.sections():
+        for s in self.config.sections():
             try:
                 dateutil.parser.parse(s)
             except ValueError:
                 return False
 
         # check options are in spec
-        for s in self.sections():
-            for o in self.options(s):
-                if not self.specification.has_option('DEFAULT', o):
-                    return False
+        if not allow_extra_options:
+            for s in self.config.sections():
+                for o in self.config.options(s):
+                    if not self.spec.has_option('DEFAULT', o):
+                        return False
 
         return True

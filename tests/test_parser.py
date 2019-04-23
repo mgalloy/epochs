@@ -109,6 +109,9 @@ def test_configparser():
     assert(basedir == '/export/data1/Data/logs.master')
     assert(type(basedir) == str)
 
+    basename = cp.get('logging', 'basename')
+    assert(basename is None)
+
     rotate = cp.get('logging', 'rotate')
     assert(not rotate)
     assert(type(rotate) == bool)
@@ -130,11 +133,21 @@ def test_configparser_is_valid():
     cp.read(os.path.join(DATA_DIR, 'user.cfg'))
     assert(cp.is_valid())
 
+    cp = epochs.ConfigParser(os.path.join(DATA_DIR, 'spec.cfg'))
+    cp.read(os.path.join(DATA_DIR, 'extra.cfg'))
+    # has "extra_option" not in spec
+    print(cp.is_valid(allow_extra_options=True))
+    assert(cp.is_valid(allow_extra_options=True))
+
 
 def test_configparser_is_notvalid():
     cp = epochs.ConfigParser(os.path.join(DATA_DIR, 'spec.cfg'))
     cp.read(os.path.join(DATA_DIR, 'site.cfg'))
     assert(not cp.is_valid())   # no basedir which is required
+
+    cp = epochs.ConfigParser(os.path.join(DATA_DIR, 'spec.cfg'))
+    cp.read(os.path.join(DATA_DIR, 'extra.cfg'))
+    assert(not cp.is_valid())   # has "extra_option" not in spec
 
 
 def test_inheritance():
@@ -209,11 +222,17 @@ def test_epochparser_is_valid():
     ep.read(os.path.join(DATA_DIR, 'epochs_.cfg'))
     assert(ep.is_valid())
 
+    ep = epochs.EpochParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
+    ep.read(os.path.join(DATA_DIR, 'epochs_extra.cfg'))
+    # has "extra_option" which is not in spec
+    assert(ep.is_valid(allow_extra_options=True))
+
 
 def test_epochparser_is_notvalid():
     ep = epochs.EpochParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
     ep.read(os.path.join(DATA_DIR, 'epochs_extra.cfg'))
     assert(not ep.is_valid())   # has "extra_option" which is not in spec
+
 
 def test_epoch_parser_interp():
     ep = epochs.EpochParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
@@ -222,8 +241,8 @@ def test_epoch_parser_interp():
     dist_filename = ep.get('dist_filename', '2018-01-02')
 
     assert(type(dist_filename) == str)
-    # TODO: the below will fail
-    #assert(dist_filename == '/export/data1/Data/dist-1.ncdf')
+    assert(dist_filename == '/export/data1/Data/dist-1.ncdf')
+
 
 def test_epoch_parser_format():
     ep = epochs.EpochParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
