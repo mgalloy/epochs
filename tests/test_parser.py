@@ -268,3 +268,17 @@ def test_epoch_parser_format():
     cal_version = ep.get('cal_version', '20180103.060000')
     assert(type(cal_version) == int)
     assert(cal_version == 3)
+
+
+def test_kcor():
+    ep = epochs.EpochParser(os.path.join(DATA_DIR, 'kcor.epochs.spec.cfg'))
+    ep.formats = ['%Y%m%d', '%Y%m%d.%H%M%S']
+    ep.read(os.path.join(DATA_DIR, 'kcor.epochs.cfg'))
+
+    dist = ep.get('distortion_correction_filename', '20190306.235959')
+    assert(type(dist) == str)
+    assert(dist == 'dist_coeff_20170522_205121.sav')
+
+    dist = ep.get('distortion_correction_filename', '20190307.000000')
+    assert(type(dist) == str)
+    assert(dist == 'dist_coeff_20190308_185649_dot1.sav')
