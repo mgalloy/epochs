@@ -28,7 +28,7 @@ OptionSpec.__doc__ = '''Specification for an option'''
 
 TYPES = {'bool': bool, 'boolean': bool, 'float': float, 'int': int, 'str': str}
 
-identifier_re = re.compile('[.\w\[\]]')
+identifier_re = re.compile('[^,="]')
 whitespace_re = re.compile('\s')
 listtypes_re = re.compile('List\[(.*)\]')
 
@@ -59,6 +59,8 @@ def _parse_specline_tokens(specline: str) -> OptionSpec:
             if in_quote:
                 identifier += c
             else:
+                if whitespace_re.match(c) and identifier == '':
+                    continue
                 if identifier_re.match(c):
                     identifier += c
                 elif c in {'=', ','}:
