@@ -330,8 +330,8 @@ class ConfigParser(configparser.ConfigParser):
         return True
 
 
-class EpochParser:
-    """EpochParser parses config files with dates as section name. Retrieving an
+class EpochConfigParser:
+    """EpochConfigParser parses config files with dates as section name. Retrieving an
     option for a given date returns the option value on the date closest, but
     before, the given date.
     """

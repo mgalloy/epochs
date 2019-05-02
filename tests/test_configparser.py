@@ -14,32 +14,32 @@ DATA_DIR = os.path.join(REPO_DIR, 'data')
 
 
 def test_str2type():
-    assert(epochs.parser._str2type('str') == str)
-    assert(epochs.parser._str2type('int') == int)
-    assert(epochs.parser._str2type('float') == float)
-    assert(epochs.parser._str2type('bool') == bool)
-    assert(epochs.parser._str2type('boolean') == bool)
+    assert(epochs.configparser._str2type('str') == str)
+    assert(epochs.configparser._str2type('int') == int)
+    assert(epochs.configparser._str2type('float') == float)
+    assert(epochs.configparser._str2type('bool') == bool)
+    assert(epochs.configparser._str2type('boolean') == bool)
 
 
 @pytest.mark.xfail(raises=ValueError)
 def test_str2type_error():
-    epochs.parser._str2type('other')
+    epochs.configparser._str2type('other')
 
 
 def test_convert():
-    value = epochs.parser._convert('True', bool, False)
+    value = epochs.configparser._convert('True', bool, False)
     assert(value)
     assert(type(value) == bool)
 
-    value = epochs.parser._convert('False', bool, False)
+    value = epochs.configparser._convert('False', bool, False)
     assert(value is False)
     assert(type(value) == bool)
 
-    value = epochs.parser._convert('1.23', float, False)
+    value = epochs.configparser._convert('1.23', float, False)
     assert(abs(value - 1.23) < 0.001)
     assert(type(value) == float)
 
-    value = epochs.parser._convert('123', int, False)
+    value = epochs.configparser._convert('123', int, False)
     assert(value == 123)
     assert(type(value) == int)
 
@@ -50,51 +50,51 @@ def lists_equal(lst1, lst2):
 
 
 def test_convert_list():
-    value = epochs.parser._convert('[a, b, c]', str, True)
+    value = epochs.configparser._convert('[a, b, c]', str, True)
     lists_equal(value, ['a', 'b', 'c'])
     assert(type(value) == list)
 
 
 @pytest.mark.xfail(raises=ValueError)
 def test_convert_error():
-    epochs.parser._convert('other', bool, False)
+    epochs.configparser._convert('other', bool, False)
 
 
 def test_parse_specline_truth():
     for v in ['True', 'true', 'Yes', 'yes']:
         spec_line = f'required={v}, type=int, default=1'
-        spec = epochs.parser._parse_specline(spec_line)
+        spec = epochs.configparser._parse_specline(spec_line)
         assert(spec.required)
         assert(spec.type == int)
         assert(spec.default == 1)
 
 
 def test_parse_specline():
-    spec = epochs.parser._parse_specline('type=float, default=1')
+    spec = epochs.configparser._parse_specline('type=float, default=1')
     assert(spec.required is False)
     assert(spec.type == float)
     assert(spec.default == 1.0)
     assert(spec.list is False)
 
-    spec = epochs.parser._parse_specline('default=1')
+    spec = epochs.configparser._parse_specline('default=1')
     assert(spec.required is False)
     assert(spec.type == str)
     assert(spec.default == '1')
     assert(spec.list is False)
 
-    spec = epochs.parser._parse_specline('')
+    spec = epochs.configparser._parse_specline('')
     assert(spec.required is False)
     assert(spec.type == str)
     assert(spec.default is None)
     assert(spec.list is False)
 
-    spec = epochs.parser._parse_specline('default="Boulder, CO"')
+    spec = epochs.configparser._parse_specline('default="Boulder, CO"')
     assert(spec.required is False)
     assert(spec.type == str)
     assert(spec.default == 'Boulder, CO')
     assert(spec.list is False)
 
-    spec = epochs.parser._parse_specline('type=List[int], default="[1, 3, 7]"')
+    spec = epochs.configparser._parse_specline('type=List[int], default="[1, 3, 7]"')
     assert(spec.required is False)
     assert(spec.type == int)
     lists_equal(spec.default, [1, 3, 7])
@@ -163,7 +163,7 @@ def test_inheritance():
 
 
 def test_epochparser():
-    ep = epochs.EpochParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
+    ep = epochs.EpochConfigParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
     ep.read(os.path.join(DATA_DIR, 'epochs.cfg'))
 
     cal_version = ep.get('cal_version', '2017-12-31')
@@ -188,7 +188,7 @@ def test_epochparser():
 
 
 def test_epochparser_property():
-    ep = epochs.EpochParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
+    ep = epochs.EpochConfigParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
     ep.read(os.path.join(DATA_DIR, 'epochs.cfg'))
 
     ep.date = '2017-12-31'
@@ -218,24 +218,24 @@ def test_epochparser_property():
 
 
 def test_epochparser_is_valid():
-    ep = epochs.EpochParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
+    ep = epochs.EpochConfigParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
     ep.read(os.path.join(DATA_DIR, 'epochs_.cfg'))
     assert(ep.is_valid())
 
-    ep = epochs.EpochParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
+    ep = epochs.EpochConfigParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
     ep.read(os.path.join(DATA_DIR, 'epochs_extra.cfg'))
     # has "extra_option" which is not in spec
     assert(ep.is_valid(allow_extra_options=True))
 
 
 def test_epochparser_is_notvalid():
-    ep = epochs.EpochParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
+    ep = epochs.EpochConfigParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
     ep.read(os.path.join(DATA_DIR, 'epochs_extra.cfg'))
     assert(not ep.is_valid())   # has "extra_option" which is not in spec
 
 
 def test_epoch_parser_interp():
-    ep = epochs.EpochParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
+    ep = epochs.EpochConfigParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
     ep.read(os.path.join(DATA_DIR, 'epochs_interp.cfg'))
 
     dist_filename = ep.get('dist_filename', '2018-01-02')
@@ -245,7 +245,7 @@ def test_epoch_parser_interp():
 
 
 def test_epoch_parser_format():
-    ep = epochs.EpochParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
+    ep = epochs.EpochConfigParser(os.path.join(DATA_DIR, 'epochs_spec.cfg'))
     ep.formats = ['%Y%m%d', '%Y%m%d.%H%M%S']
     ep.read(os.path.join(DATA_DIR, 'epochs_format.cfg'))
 
@@ -271,7 +271,7 @@ def test_epoch_parser_format():
 
 
 def test_kcor():
-    ep = epochs.EpochParser(os.path.join(DATA_DIR, 'kcor.epochs.spec.cfg'))
+    ep = epochs.EpochConfigParser(os.path.join(DATA_DIR, 'kcor.epochs.spec.cfg'))
     ep.formats = ['%Y%m%d', '%Y%m%d.%H%M%S']
     ep.read(os.path.join(DATA_DIR, 'kcor.epochs.cfg'))
 
