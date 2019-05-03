@@ -15,7 +15,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.5"
+python = "^3.6"
 python-dateutil = "^2.8"
 
 [tool.poetry.dev-dependencies]
@@ -28,7 +28,7 @@ twine = "^1.13"
 coverage = "^4.5"
 flake8 = "^3.7"
 pytest-runner = "^4.4"
-bumpversion = "^0.5.3"
+black = { version = "*", allows-prereleases = true }
 
 [tool.black]
 line-length = 88

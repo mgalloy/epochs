@@ -50,6 +50,9 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr htmlcov/
 	rm -fr .pytest_cache
 
+black:  ## fix style
+	poetry run black epochs tests
+
 lint: ## check style with flake8
 	poetry run flake8 epochs tests
 
