@@ -51,13 +51,13 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr .pytest_cache
 
 lint: ## check style with flake8
-	flake8 epochs tests
+	poetry run flake8 epochs tests
 
 test: ## run tests quickly with the default Python
 	poetry run pytest
 
 test-all: ## run tests on every Python version with tox
-	tox
+	poetry run tox
 
 coverage: ## check code coverage quickly with the default Python
 	poetry run coverage run --source epochs -m pytest
