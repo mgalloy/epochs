@@ -28,10 +28,7 @@ twine = "^1.13"
 coverage = "^4.5"
 flake8 = "^3.7"
 pytest-runner = "^4.4"
-
-[build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
+bumpversion = "^0.5.3"
 
 [tool.black]
 line-length = 88
@@ -56,4 +53,8 @@ exclude = '''
                      # the root of the project
 )
 '''
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
 
