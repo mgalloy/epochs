@@ -54,15 +54,15 @@ lint: ## check style with flake8
 	flake8 epochs tests
 
 test: ## run tests quickly with the default Python
-	py.test
+	poetry run pytest
 
 test-all: ## run tests on every Python version with tox
 	tox
 
 coverage: ## check code coverage quickly with the default Python
-	coverage run --source epochs -m pytest
-	coverage report -m
-	coverage html
+	poetry run coverage run --source epochs -m pytest
+	poetry run coverage report -m
+	poetry run coverage html
 	$(BROWSER) htmlcov/index.html
 
 docs: ## generate Sphinx HTML documentation, including API docs

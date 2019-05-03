@@ -1,3 +1,38 @@
+[tool.poetry]
+name = "epochs"
+version = "0.2.0"
+description = "Python package to handle configuration files specifying values changing over time"
+authors = ["Michael Galloy <mgalloy@gmail.com>"]
+license = "BSD-3-Clause"
+readme = "README.rst"
+homepage = "https://epochs.readthedocs.io/en/latest/"
+repository = "https://github.com/mgalloy/epochs"
+documentation = "https://epochs.readthedocs.io/en/latest/"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+]
+
+[tool.poetry.dependencies]
+python = "^3.5"
+python-dateutil = "^2.8"
+
+[tool.poetry.dev-dependencies]
+pytest = "^3.0"
+tox = "^3.9"
+wheel = "^0.33.1"
+watchdog = "^0.9.0"
+Sphinx = "^2.0"
+twine = "^1.13"
+coverage = "^4.5"
+flake8 = "^3.7"
+pytest-runner = "^4.4"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
+
 [tool.black]
 line-length = 88
 target-version = ['py37']
@@ -21,3 +56,4 @@ exclude = '''
                      # the root of the project
 )
 '''
+
