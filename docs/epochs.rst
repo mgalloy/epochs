@@ -4,10 +4,10 @@ epochs package
 Submodules
 ----------
 
-epochs\.parser module
----------------------
+epochs.configparser module
+--------------------------
 
-.. automodule:: epochs.parser
+.. automodule:: epochs.configparser
     :members:
     :undoc-members:
     :show-inheritance:

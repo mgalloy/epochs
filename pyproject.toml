@@ -29,6 +29,7 @@ coverage = "^4.5"
 flake8 = "^3.7"
 pytest-runner = "^4.4"
 black = { version = "*", allows-prereleases = true }
+sphinx_rtd_theme = "^0.4.3"
 
 [tool.black]
 line-length = 88
