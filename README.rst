@@ -13,11 +13,6 @@ epochs
      :target: https://epochs.readthedocs.io/en/latest/?badge=latest
      :alt: Documentation Status
 
-.. image:: https://pyup.io/repos/github/mgalloy/epochs/shield.svg
-     :target: https://pyup.io/repos/github/mgalloy/epochs/
-     :alt: Updates
-
-
 
 Python package to handle configuration files specifying values changing over time
 
