@@ -31,6 +31,9 @@ pytest-runner = "^4.4"
 black = { version = "*", allows-prereleases = true }
 sphinx_rtd_theme = "^0.4.3"
 
+[tool.poetry.scripts]
+timeline = 'epochs:timeline.main'
+
 [tool.black]
 line-length = 88
 target-version = ['py37']

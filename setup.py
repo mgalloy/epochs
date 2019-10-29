@@ -44,4 +44,9 @@ setup(
     url='https://github.com/mgalloy/epochs',
     version='0.2.0',
     zip_safe=False,
+    entry_points = {
+        "console_scripts": [
+            "timeline = epochs.timeline:main",
+        ]
+    }
 )

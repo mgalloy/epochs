@@ -3,6 +3,8 @@
 """Module defining timeline generator.
 """
 
+import argparse
+import os
 
 import dateutil.parser
 import matplotlib
@@ -120,3 +122,26 @@ def generate(timeline, filename):
 
     # write timeline output
     plt.savefig(filename)
+
+
+def main():
+    name = "Timeline generator"
+    parser = argparse.ArgumentParser(description=name)
+    parser.add_argument("-v", "--version",
+                        action="version",
+                        version=name)
+    parser.add_argument("filename", help="YAML input filename")
+    parser.add_argument("-o", "--output", help="output filename")
+    args = parser.parse_args()
+
+    timeline = load(args.filename)
+    if args.output is None:
+        output_filename = os.path.splitext(args.filename)[0] + ".pdf"
+    else:
+        output_filename = args.output
+
+    generate(timeline, output_filename)
+
+
+if __name__ == "__main__":
+    main()
