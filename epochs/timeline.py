@@ -12,6 +12,8 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import yaml
 
+import epochs
+
 
 colors = matplotlib.colors.get_named_colors_mapping()
 
@@ -125,7 +127,7 @@ def generate(timeline, filename):
 
 
 def main():
-    name = "Timeline generator"
+    name = f"Timeline generator (epochs {epochs.__version__})"
     parser = argparse.ArgumentParser(description=name)
     parser.add_argument("-v", "--version",
                         action="version",
