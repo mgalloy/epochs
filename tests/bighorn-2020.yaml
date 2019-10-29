@@ -1,0 +1,66 @@
+Bighorn 2020 schedule:
+  type: timeline
+  start: 09-16-2019
+  end: 07-31-2020
+  ticks: weeks              # days, weeks, or months
+  tick-format: "%d-%b-%Y"
+  axes: both                # top, bottom, or both
+  width: 10.5               # inches
+  height: 7.5               # inches
+
+Fire on the Bayou:
+  type: event
+  date: 03-28-2020
+  end: 03-29-2020
+  color: red
+  note: 3/28-29
+
+Regionals:
+  type: event
+  date: 06-13-2020
+  color: red
+  note: 6/13?
+
+Masters Nationals:
+  type: event
+  date: 07-17-2020
+  end: 07-19-2020
+  color: red
+  note: 7/17-19
+
+Non-daylight savings time:
+  type: interval
+  start: 11-03-2019
+  end: 03-08-2020
+  color: darkblue
+  location: 0.975
+
+Goaltimate:
+  type: interval
+  start: 10-5-2019
+  end: 3-8-2020
+  color: violet
+  location: 0.1
+
+Fall league:
+  type: interval
+  start: 9-8-2019
+  end: 11-12-2019
+  color: green
+  location: 0.05
+
+Spring league:
+  type: interval
+  start: 3-15-2020
+  end: 5-18-2020
+  color: green
+  location: 0.05
+  note: approximate times
+
+Summer league:
+  type: interval
+  start: 5-31-2020
+  end: 8-17-2020
+  color: green
+  location: 0.05
+  note: approximate times
