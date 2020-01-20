@@ -18,8 +18,9 @@ Fire on the Bayou:
 Regionals:
   type: event
   date: 06-13-2020
+  end: 06-14-2020
   color: red
-  note: 6/13?
+  note: 6/13-14
 
 Masters Nationals:
   type: event
