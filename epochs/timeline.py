@@ -5,12 +5,17 @@
 
 import argparse
 import os
+import warnings
 
 import dateutil.parser
 import matplotlib
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import yaml
+try:
+    from yaml import CLoader as Loader
+except ImportError:
+    from yaml import Loader
 
 import epochs
 
@@ -20,12 +25,12 @@ colors = matplotlib.colors.get_named_colors_mapping()
 
 def load(filename):
     with open(filename, "r") as f:
-        y = yaml.load(f)
+        y = yaml.load(f, Loader=Loader)
     return(y)
 
 
 def loads(s):
-    return(yaml.load(s))
+    return(yaml.load(s, Loader=Loader))
 
 
 def _get_type(timeline, typename):
@@ -44,7 +49,7 @@ def generate(timeline, filename):
     # set up coordinate system
     width = timeline[top_name].get("width", 8.0)
     height = timeline[top_name].get("height", 8.0)
-    fig, ax = plt.subplots(figsize=(width, height), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(width, height))
 
     vgap = line_height * annotation_fontsize / (height * 72)   # 72 pts/inch
 
@@ -134,6 +139,7 @@ def main():
                         version=name)
     parser.add_argument("filename", help="YAML input filename")
     parser.add_argument("-o", "--output", help="output filename")
+    parser.add_argument("--verbose", help="output warnings", action="store_true")
     args = parser.parse_args()
 
     timeline = load(args.filename)
@@ -141,6 +147,9 @@ def main():
         output_filename = os.path.splitext(args.filename)[0] + ".pdf"
     else:
         output_filename = args.output
+
+    if not args.verbose:
+        warnings.filterwarnings("ignore")
 
     generate(timeline, output_filename)
 
