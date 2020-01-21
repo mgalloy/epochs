@@ -106,7 +106,6 @@ def generate_intervals(timeline, coords, ax):
                      horizontalalignment="center")
 
 
-
 def generate(timeline, filename, args):
     top_name = _get_type(timeline, "timeline")[0]
     coords = timeline_coords(timeline, top_name)
