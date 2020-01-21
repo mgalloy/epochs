@@ -5,6 +5,7 @@
 
 import argparse
 import os
+import re
 import warnings
 
 import dateutil.parser
@@ -20,7 +21,12 @@ except ImportError:
 import epochs
 
 
-colors = matplotlib.colors.get_named_colors_mapping()
+named_colors = matplotlib.colors.get_named_colors_mapping()
+hex_color_re = re.compile("^[abcdef0-9]{6}$")
+
+
+def warn(msg):
+    print(f"WARNING: {msg}")
 
 
 def load(filename):
@@ -37,25 +43,78 @@ def _get_type(timeline, typename):
     return [item for item in timeline if timeline[item].get("type") == typename]
 
 
-def generate(timeline, filename):
-    top_name = _get_type(timeline, "timeline")[0]
+def _valid_hexcolor(color):
+    return bool(hex_color_re.match(color))
 
+
+class timeline_coords(object):
     annotation_fontsize = 8   # pts
+    note_fontsize = 6   # pts
     line_height = 1.5
 
-    start_date = dateutil.parser.parse(timeline[top_name]["start"])
-    end_date = dateutil.parser.parse(timeline[top_name]["end"])
+    def __init__(self, timeline, top_name):
+        self.start_date = dateutil.parser.parse(timeline[top_name]["start"])
+        self.end_date = dateutil.parser.parse(timeline[top_name]["end"])
 
-    # set up coordinate system
-    width = timeline[top_name].get("width", 8.0)
-    height = timeline[top_name].get("height", 8.0)
-    fig, ax = plt.subplots(figsize=(width, height))
+        self.width = timeline[top_name].get("width", 8.0)
+        self.height = timeline[top_name].get("height", 8.0)
 
-    vgap = line_height * annotation_fontsize / (height * 72)   # 72 pts/inch
+        self.annotation_gap = self.line_height * self.annotation_fontsize / (self.height * 72)   # 72 pts/inch
+        self.note_gap = self.line_height * self.note_fontsize / (self.height * 72)
 
-    plt.tick_params(labelsize=annotation_fontsize)
+
+def generate_events(timeline, coords, ax):
+    events = _get_type(timeline, "event")
+    # TODO: implement
+
+
+def generate_intervals(timeline, coords, ax):
+    intervals = _get_type(timeline, "interval")
+    for name in intervals:
+        i = timeline[name]
+        start = dateutil.parser.parse(i.get("start"))
+        end = dateutil.parser.parse(i.get("end"))
+
+        color = str(i.get("color", "black"))
+        if color in named_colors:
+            color = named_colors[color]
+        elif _valid_hexcolor(color):
+            color = f"#{color}"
+        else:
+            warn(f"{name} interval color \"{color}\" not a named color or 6-digit hex value, using black")
+            color = "#000000"
+
+        #print(f"name = {name}, color = {color}")
+
+        xmin = (start - coords.start_date) / (coords.end_date - coords.start_date)
+        xmax = (end - coords.start_date) / (coords.end_date - coords.start_date)
+        y = i.get("location", 0.5)
+        ax.axhline(y=y, color=color, xmin=xmin, xmax=xmax, linewidth=2.0)
+        plt.text(start + 0.5 * (end - start),
+                 y - coords.annotation_gap,
+                 name,
+                 fontsize=coords.annotation_fontsize,
+                 #weight="bold",
+                 horizontalalignment="center")
+        note = i.get("note")
+        if note is not None:
+            plt.text(start + 0.5 * (end - start),
+                     y - coords.annotation_gap - coords.note_gap,
+                     note,
+                     fontsize=coords.note_fontsize,
+                     fontstyle="italic",
+                     horizontalalignment="center")
+
+
+
+def generate(timeline, filename, args):
+    top_name = _get_type(timeline, "timeline")[0]
+    coords = timeline_coords(timeline, top_name)
+    fig, ax = plt.subplots(figsize=(coords.width, coords.height))
+
+    plt.tick_params(labelsize=coords.annotation_fontsize)
     top_ax = ax.twiny()
-    plt.tick_params(labelsize=annotation_fontsize)
+    plt.tick_params(labelsize=coords.annotation_fontsize)
 
     ticks = timeline[top_name].get("ticks", "weeks").lower()
     tick_format = timeline[top_name].get("tick-format", "%b %y")
@@ -87,45 +146,19 @@ def generate(timeline, filename):
         ax.spines[spine].set_visible(False)
         top_ax.spines[spine].set_visible(False)
 
-    ax.set_xlim([start_date, end_date])
+    ax.set_xlim([coords.start_date, coords.end_date])
     top_ax.set_xlim(ax.get_xlim())
 
-    plt.grid(which="minor", axis="x", linestyle=":")
-    plt.grid(which="major", axis="x")
+    grid_color = "#e8e8e8"
+    plt.grid(which="minor", axis="x", linestyle=":", color=grid_color)
+    plt.grid(which="major", axis="x", color=grid_color)
 
     # set title of timeline
     plt.title(top_name, y=1.05)
     plt.subplots_adjust(left=0.05, right=0.95, top=0.9, bottom=0.1)
 
-    # handle events
-    events = _get_type(timeline, "event")
-
-
-    # handle intervals
-    events = _get_type(timeline, "interval")
-    for name in events:
-        e = timeline[name]
-        start = dateutil.parser.parse(e.get("start"))
-        end = dateutil.parser.parse(e.get("end"))
-        color = e.get("color", "black")
-        xmin = (start - start_date) / (end_date - start_date)
-        xmax = (end - start_date) / (end_date - start_date)
-        y = e.get("location", 0.5)
-        ax.axhline(y=y, color=colors[color], xmin=xmin, xmax=xmax, linewidth=2.0)
-        plt.text(start + 0.5 * (end - start),
-                 y - vgap,
-                 name,
-                 fontsize=annotation_fontsize,
-                 #weight="bold",
-                 horizontalalignment="center")
-        note = e.get("note")
-        if note is not None:
-            plt.text(start + 0.5 * (end - start),
-                     y - 2 * vgap,
-                     note,
-                     fontsize=annotation_fontsize,
-                     fontstyle="italic",
-                     horizontalalignment="center")
+    generate_events(timeline, coords, ax)
+    generate_intervals(timeline, coords, ax)
 
     # write timeline output
     plt.savefig(filename)
@@ -151,7 +184,7 @@ def main():
     if not args.verbose:
         warnings.filterwarnings("ignore")
 
-    generate(timeline, output_filename)
+    generate(timeline, output_filename, args)
 
 
 if __name__ == "__main__":

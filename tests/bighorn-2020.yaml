@@ -33,14 +33,14 @@ Non-daylight savings time:
   type: interval
   start: 11-03-2019
   end: 03-08-2020
-  color: darkblue
+  color: 808080
   location: 0.975
 
 Goaltimate:
   type: interval
   start: 10-5-2019
   end: 3-8-2020
-  color: violet
+  color: lightblue
   location: 0.1
 
 Fall league:
