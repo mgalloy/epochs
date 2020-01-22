@@ -2,11 +2,22 @@ Bighorn 2020 schedule:
   type: timeline
   start: 09-16-2019
   end: 07-31-2020
-  ticks: weeks              # days, weeks, or months
-  tick-format: "%d-%b-%Y"
   axes: both                # top, bottom, or both
   width: 10.5               # inches
   height: 7.5               # inches
+  ticks: weeks              # days, weeks, or months
+  tick-format: "%d %b %Y"
+
+season week:
+  type: numbering
+  initial_value: 1
+  alignment: center
+  position: both
+
+year week:
+  type: numbering
+  alignment: center         # left, right, or center
+  position: both            # top, bottom, or both
 
 Fire on the Bayou:
   type: event
@@ -20,7 +31,7 @@ Regionals:
   date: 06-13-2020
   end: 06-14-2020
   color: red
-  note: 6/13-14
+  note: "6/13-14 Location: TBD"
 
 Masters Nationals:
   type: event
@@ -33,7 +44,7 @@ Non-daylight savings time:
   type: interval
   start: 11-03-2019
   end: 03-08-2020
-  color: 808080
+  color: "#808080"
   location: 0.975
 
 Goaltimate:
