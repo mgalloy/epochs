@@ -22,7 +22,7 @@ import epochs
 
 
 named_colors = matplotlib.colors.get_named_colors_mapping()
-hex_color_re = re.compile("^[abcdef0-9]{6}$")
+hex_color_re = re.compile("^#[abcdef0-9]{6}$")
 
 
 def warn(msg):
@@ -50,6 +50,7 @@ def _valid_hexcolor(color):
 class timeline_coords(object):
     annotation_fontsize = 8   # pts
     note_fontsize = 6   # pts
+    ticklabel_fontsize = 7   # pts
     line_height = 1.5
 
     def __init__(self, timeline, top_name):
@@ -63,71 +64,29 @@ class timeline_coords(object):
         self.note_gap = self.line_height * self.note_fontsize / (self.height * 72)
 
 
-def generate_events(timeline, coords, ax):
-    events = _get_type(timeline, "event")
-    # TODO: implement
-
-
-def generate_intervals(timeline, coords, ax):
-    intervals = _get_type(timeline, "interval")
-    for name in intervals:
-        i = timeline[name]
-        start = dateutil.parser.parse(i.get("start"))
-        end = dateutil.parser.parse(i.get("end"))
-
-        color = str(i.get("color", "black"))
-        if color in named_colors:
-            color = named_colors[color]
-        elif _valid_hexcolor(color):
-            color = f"#{color}"
-        else:
-            warn(f"{name} interval color \"{color}\" not a named color or 6-digit hex value, using black")
-            color = "#000000"
-
-        #print(f"name = {name}, color = {color}")
-
-        xmin = (start - coords.start_date) / (coords.end_date - coords.start_date)
-        xmax = (end - coords.start_date) / (coords.end_date - coords.start_date)
-        y = i.get("location", 0.5)
-        ax.axhline(y=y, color=color, xmin=xmin, xmax=xmax, linewidth=2.0)
-        plt.text(start + 0.5 * (end - start),
-                 y - coords.annotation_gap,
-                 name,
-                 fontsize=coords.annotation_fontsize,
-                 #weight="bold",
-                 horizontalalignment="center")
-        note = i.get("note")
-        if note is not None:
-            plt.text(start + 0.5 * (end - start),
-                     y - coords.annotation_gap - coords.note_gap,
-                     note,
-                     fontsize=coords.note_fontsize,
-                     fontstyle="italic",
-                     horizontalalignment="center")
-
-
-def generate(timeline, filename, args):
-    top_name = _get_type(timeline, "timeline")[0]
-    coords = timeline_coords(timeline, top_name)
+def setup_plot(timeline, coords, top_name):
     fig, ax = plt.subplots(figsize=(coords.width, coords.height))
 
-    plt.tick_params(labelsize=coords.annotation_fontsize)
+    plt.tick_params(labelsize=coords.ticklabel_fontsize)
     top_ax = ax.twiny()
-    plt.tick_params(labelsize=coords.annotation_fontsize)
+    plt.tick_params(labelsize=coords.ticklabel_fontsize)
 
     ticks = timeline[top_name].get("ticks", "weeks").lower()
-    tick_format = timeline[top_name].get("tick-format", "%b %y")
 
     if ticks == "days":
+        tick_format = timeline[top_name].get("tick-format", "%d %b %y")
         major_locator = mdates.DayLocator(interval=1)
         minor_locator = None
     elif ticks == "weeks":
+        tick_format = timeline[top_name].get("tick-format", "%d %b %y")
         major_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=4)
         minor_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
     elif ticks == "months":
+        tick_format = timeline[top_name].get("tick-format", "%b %y")
         major_locator = mdates.MonthLocator(interval=1)
         minor_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
     else:
+        tick_format = timeline[top_name].get("tick-format", "%d %b %y")
         minor_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
         minor_locator = None
 
@@ -156,8 +115,69 @@ def generate(timeline, filename, args):
     plt.title(top_name, y=1.05)
     plt.subplots_adjust(left=0.05, right=0.95, top=0.9, bottom=0.1)
 
-    generate_events(timeline, coords, ax)
-    generate_intervals(timeline, coords, ax)
+    return fig, ax
+
+
+def render_numbering(timeline, coords, ax):
+    numberings = _get_type(timeline, "numbering")
+    for name in numberings:
+        n = timeline[name]
+        #print(n)
+
+
+def render_events(timeline, coords, ax):
+    events = _get_type(timeline, "event")
+    # TODO: implement
+    for name in events:
+        pass
+        #print(timeline[name])
+
+
+def render_intervals(timeline, coords, ax):
+    intervals = _get_type(timeline, "interval")
+    for name in intervals:
+        i = timeline[name]
+        start = dateutil.parser.parse(i.get("start"))
+        end = dateutil.parser.parse(i.get("end"))
+
+        color = str(i.get("color", "black"))
+        if color in named_colors:
+            color = named_colors[color]
+        elif not _valid_hexcolor(color):
+            warn(f"{name} interval color \"{color}\" not a named color or 6-digit hex value, using black")
+            color = "#000000"
+
+        xmin = (start - coords.start_date) / (coords.end_date - coords.start_date)
+        xmax = (end - coords.start_date) / (coords.end_date - coords.start_date)
+        y = i.get("location", 0.5)
+        ax.axhline(y=y, color=color, xmin=xmin, xmax=xmax, linewidth=2.0)
+        plt.text(start + 0.5 * (end - start),
+                 y - coords.annotation_gap,
+                 name,
+                 fontsize=coords.annotation_fontsize,
+                 #weight="bold",
+                 horizontalalignment="center")
+        note = i.get("note")
+        if note is not None:
+            plt.text(start + 0.5 * (end - start),
+                     y - coords.annotation_gap - coords.note_gap,
+                     note,
+                     fontsize=coords.note_fontsize,
+                     fontstyle="italic",
+                     horizontalalignment="center")
+
+
+def generate(timeline, filename, args):
+    top_name = _get_type(timeline, "timeline")[0]
+    # check to make sure top_name is unique
+
+    coords = timeline_coords(timeline, top_name)
+
+    fig, ax = setup_plot(timeline, coords, top_name)
+
+    render_numbering(timeline, coords, ax)
+    render_events(timeline, coords, ax)
+    render_intervals(timeline, coords, ax)
 
     # write timeline output
     plt.savefig(filename)
