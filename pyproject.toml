@@ -13,7 +13,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Natural Language :: English",
 ]
-keywords = "date time configuration timeline"
+keywords = ["date", "time", "configuration", "timeline"]
 
 [tool.poetry.dependencies]
 python = "^3.6"
