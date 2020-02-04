@@ -35,7 +35,6 @@ setup(
     license="BSD license",
     long_description=readme + '\n\n' + history,
     include_package_data=True,
-    keywords='epochs',
     name='epochs',
     keywords="date time configuration timeline",
     packages=find_packages(include=['epochs']),
