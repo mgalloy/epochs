@@ -36,7 +36,7 @@ setup(
     long_description=readme + '\n\n' + history,
     include_package_data=True,
     name='epochs',
-    keywords="date time configuration timeline",
+    keywords="epochs date time configuration timeline",
     packages=find_packages(include=['epochs']),
     setup_requires=setup_requirements,
     test_suite='tests',
