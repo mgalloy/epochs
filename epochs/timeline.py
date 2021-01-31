@@ -47,6 +47,15 @@ def _valid_hexcolor(color):
     return bool(hex_color_re.match(color))
 
 
+def _encode_color(color):
+    if color in named_colors:
+        color = named_colors[color]
+    elif not _valid_hexcolor(color):
+        warn(f"{name} interval color \"{color}\" not a named color or 6-digit hex value, using black")
+        color = "#000000"
+    return(color)
+
+
 class timeline_coords(object):
     annotation_fontsize = 8   # pts
     note_fontsize = 6   # pts
@@ -60,9 +69,11 @@ class timeline_coords(object):
         self.width = timeline[top_name].get("width", 8.0)
         self.height = timeline[top_name].get("height", 8.0)
 
-        self.annotation_gap = self.line_height * self.annotation_fontsize / (self.height * 72)   # 72 pts/inch
+        self.y_annotation_gap = self.line_height * self.annotation_fontsize / (self.height * 72)   # 72 pts/inch
         self.note_gap = self.line_height * self.note_fontsize / (self.height * 72)
 
+    def get_date_coord(self, date):
+        return((date - self.start_date) / (self.end_date - self.start_date))
 
 def setup_plot(timeline, coords, top_name):
     fig, ax = plt.subplots(figsize=(coords.width, coords.height))
@@ -127,10 +138,38 @@ def render_numbering(timeline, coords, ax):
 
 def render_events(timeline, coords, ax):
     events = _get_type(timeline, "event")
-    # TODO: implement
     for name in events:
-        pass
-        #print(timeline[name])
+        start_date = dateutil.parser.parse(timeline[name]["date"])
+        end_date = dateutil.parser.parse(timeline[name]["end"]) if "end" in timeline[name] else None
+        color = _encode_color(str(timeline[name].get("color", "black")))
+        text_color = _encode_color(str(timeline[name].get("text_color", "black")))
+        x = coords.get_date_coord(start_date)
+        y = float(timeline[name].get("location", 0.90))
+        if end_date is not None:
+            ax.axhline(y=1.0,
+                       xmin=x,
+                       xmax=coords.get_date_coord(end_date),
+                       color=color,
+                       linewidth=6.0)
+        ax.axvline(x=start_date,
+                   ymin=y,
+                   ymax=1.0,
+                   color=color,
+                   linewidth=0.5)
+        plt.text(start_date,
+                 y - coords.y_annotation_gap,
+                 name,
+                 color=text_color,
+                 fontsize=coords.annotation_fontsize)
+        note = timeline[name].get("note")
+        if note is not None:
+            plt.text(start_date,
+                     y - coords.y_annotation_gap - coords.note_gap,
+                     note,
+                     fontsize=coords.note_fontsize,
+                     fontstyle="italic",
+                     horizontalalignment="left")
+        #print(f"{name}: {start_date} to {end_date}, at {x:0.3f}, {y} in {color}")
 
 
 def render_intervals(timeline, coords, ax):
@@ -140,19 +179,15 @@ def render_intervals(timeline, coords, ax):
         start = dateutil.parser.parse(i.get("start"))
         end = dateutil.parser.parse(i.get("end"))
 
-        color = str(i.get("color", "black"))
-        if color in named_colors:
-            color = named_colors[color]
-        elif not _valid_hexcolor(color):
-            warn(f"{name} interval color \"{color}\" not a named color or 6-digit hex value, using black")
-            color = "#000000"
+        color = _encode_color(str(i.get("color", "black")))
 
-        xmin = (start - coords.start_date) / (coords.end_date - coords.start_date)
-        xmax = (end - coords.start_date) / (coords.end_date - coords.start_date)
+        xmin = coords.get_date_coord(start)
+        xmax = coords.get_date_coord(end)
         y = i.get("location", 0.5)
-        ax.axhline(y=y, color=color, xmin=xmin, xmax=xmax, linewidth=2.0)
+        #print(f"{name}: {xmin} to {xmax} at y={y}")
+        ax.axhline(y=y, xmin=xmin, xmax=xmax, color=color, linewidth=2.0)
         plt.text(start + 0.5 * (end - start),
-                 y - coords.annotation_gap,
+                 y - coords.y_annotation_gap,
                  name,
                  fontsize=coords.annotation_fontsize,
                  #weight="bold",
@@ -160,7 +195,7 @@ def render_intervals(timeline, coords, ax):
         note = i.get("note")
         if note is not None:
             plt.text(start + 0.5 * (end - start),
-                     y - coords.annotation_gap - coords.note_gap,
+                     y - coords.y_annotation_gap - coords.note_gap,
                      note,
                      fontsize=coords.note_fontsize,
                      fontstyle="italic",

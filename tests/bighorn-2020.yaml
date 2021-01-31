@@ -26,11 +26,18 @@ Fire on the Bayou:
   color: red
   note: 3/28-29
 
+Announce roster:
+  type: event
+  date: 06-10-02020
+  color: red
+  location: 0.80
+
 Regionals:
   type: event
   date: 06-13-2020
   end: 06-14-2020
   color: red
+  location: 0.85
   note: "6/13-14 Location: TBD"
 
 Masters Nationals:
@@ -45,28 +52,28 @@ Non-daylight savings time:
   start: 11-03-2019
   end: 03-08-2020
   color: "#808080"
-  location: 0.975
+  location: 0.95
 
 Goaltimate:
   type: interval
   start: 10-5-2019
   end: 3-8-2020
   color: lightblue
-  location: 0.1
+  location: 0.15
 
 Fall league:
   type: interval
   start: 9-8-2019
   end: 11-12-2019
   color: green
-  location: 0.05
+  location: 0.10
 
 Spring league:
   type: interval
   start: 3-15-2020
   end: 5-18-2020
   color: green
-  location: 0.05
+  location: 0.10
   note: approximate times
 
 Summer league:
@@ -74,5 +81,5 @@ Summer league:
   start: 5-31-2020
   end: 8-17-2020
   color: green
-  location: 0.05
+  location: 0.10
   note: approximate times
