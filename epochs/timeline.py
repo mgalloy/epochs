@@ -4,6 +4,7 @@
 """
 
 import argparse
+import datetime
 import os
 import re
 import warnings
@@ -202,9 +203,30 @@ def render_intervals(timeline, coords, ax):
                      horizontalalignment="center")
 
 
-def generate(timeline, filename, args):
-    top_name = _get_type(timeline, "timeline")[0]
+def render_lines(timeline, coords, ax):
+    vlines = _get_type(timeline, "vertical line")
+    for name in vlines:
+        v = timeline[name]
+
+        start_name = v.get("date")
+        if start_name == "now":
+            start = datetime.datetime.now()
+        else:
+            start = dateutil.parser.parse(start_name)
+
+        color = _encode_color(str(v.get("color", "black")))
+        ax.axvline(x=start, ymin=0.0, ymax=1.0, color=color, linewidth=1.0)
+
+
+def generate(timeline, filename, args, parser):
+    top_names = _get_type(timeline, "timeline")
+
     # check to make sure top_name is unique
+    if len(top_names) == 0:
+        parser.error("No top-level timeline")
+    elif len(top_names) > 1:
+        parser.error("Top-level timeline not unique")
+    top_name = top_names[0]
 
     coords = timeline_coords(timeline, top_name)
 
@@ -213,6 +235,7 @@ def generate(timeline, filename, args):
     render_numbering(timeline, coords, ax)
     render_events(timeline, coords, ax)
     render_intervals(timeline, coords, ax)
+    render_lines(timeline, coords, ax)
 
     # write timeline output
     plt.savefig(filename)
@@ -238,7 +261,7 @@ def main():
     if not args.verbose:
         warnings.filterwarnings("ignore")
 
-    generate(timeline, output_filename, args)
+    generate(timeline, output_filename, args, parser)
 
 
 if __name__ == "__main__":
