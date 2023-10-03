@@ -22,7 +22,7 @@ python-dateutil = "^2.8"
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"
 tox = "^3.9"
-wheel = "^0.33.1"
+wheel = "^0.38.1"
 watchdog = "^0.9.0"
 Sphinx = "^2.0"
 twine = "^1.13"
