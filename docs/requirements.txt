@@ -1,2 +1,3 @@
 python-dateutil
+spinx
 sphinx_rtd_theme

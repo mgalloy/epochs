@@ -103,6 +103,17 @@ html_static_path = ['_static']
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'epochsdoc'
 
+html_css_files = [
+    "https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css",
+]
+
+html_context = {
+    "css_files": [
+        "_static/theme_overrides.css",
+        "_static/pagination.css",
+        "_static/search_accessories.css",
+    ]
+}
 
 # -- Options for LaTeX output ------------------------------------------
 
