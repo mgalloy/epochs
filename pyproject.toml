@@ -59,7 +59,10 @@ exclude = '''
 )
 '''
 
+[tool.pytest.ini_options]
+# increment the --cov-fail-under as we increase test coverage
+addopts = "--cov --cov-report html:coverage_html --cov-report term-missing --cov-fail-under 3"
+
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
-
