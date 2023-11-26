@@ -100,7 +100,9 @@ class timeline_coords(object):
         self.y_annotation_gap = (
             0.25 * self.line_height * self.annotation_fontsize / (self.height * 72)
         )  # 72 pts/inch
-        self.note_gap = self.line_height * self.note_fontsize / (self.height * 72)
+        self.note_gap = (
+            0.25 * self.line_height * self.note_fontsize / (self.height * 72)
+        )
 
     def get_date_coord(self, date):
         return (date - self.start_date) / (self.end_date - self.start_date)
@@ -210,7 +212,8 @@ def render_events(timeline, fig, coords, ax):
             plt.text(
                 start_date,
                 lower_left - coords.note_gap,
-                note,
+                note.encode().decode("unicode_escape"),
+                verticalalignment="top",
                 fontsize=coords.note_fontsize,
                 fontstyle="italic",
                 horizontalalignment="left",
@@ -244,7 +247,7 @@ def render_intervals(timeline, fig, coords, ax):
         title_text = plt.text(
             start + 0.5 * (end - start),
             y - 2 * coords.y_annotation_gap,
-            name,
+            name.encode().decode("unicode_escape"),
             fontsize=coords.annotation_fontsize,
             verticalalignment="top",
             horizontalalignment="center",
@@ -262,7 +265,8 @@ def render_intervals(timeline, fig, coords, ax):
             plt.text(
                 start + 0.5 * (end - start),
                 lower_left - coords.note_gap,
-                note,
+                note.encode().decode("unicode_escape"),
+                verticalalignment="top",
                 fontsize=coords.note_fontsize,
                 fontstyle="italic",
                 horizontalalignment="center",
