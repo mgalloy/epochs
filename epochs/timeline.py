@@ -14,6 +14,7 @@ import matplotlib
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import yaml
+
 try:
     from yaml import CLoader as Loader
 except ImportError:
@@ -25,6 +26,26 @@ import epochs
 named_colors = matplotlib.colors.get_named_colors_mapping()
 hex_color_re = re.compile("^#[abcdef0-9]{6}$")
 
+LINESTYLES = {
+    "solid": "solid",
+    "dotted": "dotted",
+    "dashed": "dashed",
+    "dashdot": "dashdot",
+    "loosely dotted": (0, (1, 10)),
+    "dotted": (0, (1, 1)),
+    "densely dotted": (0, (1, 1)),
+    "long dash with offset": (5, (10, 3)),
+    "loosely dashed": (0, (5, 10)),
+    "dashed": (0, (5, 5)),
+    "densely dashed": (0, (5, 1)),
+    "loosely dashdotted": (0, (3, 10, 1, 10)),
+    "dashdotted": (0, (3, 5, 1, 5)),
+    "densely dashdotted": (0, (3, 1, 1, 1)),
+    "dashdotdotted": (0, (3, 5, 1, 5, 1, 5)),
+    "loosely dashdotdotted": (0, (3, 10, 1, 10, 1, 10)),
+    "densely dashdotdotted": (0, (3, 1, 1, 1, 1, 1)),
+}
+
 
 def warn(msg):
     print(f"WARNING: {msg}")
@@ -33,11 +54,11 @@ def warn(msg):
 def load(filename):
     with open(filename, "r") as f:
         y = yaml.load(f, Loader=Loader)
-    return(y)
+    return y
 
 
 def loads(s):
-    return(yaml.load(s, Loader=Loader))
+    return yaml.load(s, Loader=Loader)
 
 
 def _get_type(timeline, typename):
@@ -52,15 +73,21 @@ def _encode_color(color):
     if color in named_colors:
         color = named_colors[color]
     elif not _valid_hexcolor(color):
-        warn(f"{name} interval color \"{color}\" not a named color or 6-digit hex value, using black")
+        warn(
+            f'{name} interval color "{color}" not a named color or 6-digit hex value, using black'
+        )
         color = "#000000"
-    return(color)
+    return color
+
+
+def _encode_linestyle(linestyle):
+    return LINESTYLES[linestyle]
 
 
 class timeline_coords(object):
-    annotation_fontsize = 8   # pts
-    note_fontsize = 6   # pts
-    ticklabel_fontsize = 7   # pts
+    annotation_fontsize = 8  # pts
+    note_fontsize = 6  # pts
+    ticklabel_fontsize = 7  # pts
     line_height = 1.5
 
     def __init__(self, timeline, top_name):
@@ -70,11 +97,14 @@ class timeline_coords(object):
         self.width = timeline[top_name].get("width", 8.0)
         self.height = timeline[top_name].get("height", 8.0)
 
-        self.y_annotation_gap = self.line_height * self.annotation_fontsize / (self.height * 72)   # 72 pts/inch
+        self.y_annotation_gap = (
+            0.25 * self.line_height * self.annotation_fontsize / (self.height * 72)
+        )  # 72 pts/inch
         self.note_gap = self.line_height * self.note_fontsize / (self.height * 72)
 
     def get_date_coord(self, date):
-        return((date - self.start_date) / (self.end_date - self.start_date))
+        return (date - self.start_date) / (self.end_date - self.start_date)
+
 
 def setup_plot(timeline, coords, top_name):
     fig, ax = plt.subplots(figsize=(coords.width, coords.height))
@@ -130,50 +160,65 @@ def setup_plot(timeline, coords, top_name):
     return fig, ax
 
 
-def render_numbering(timeline, coords, ax):
+def render_numbering(timeline, fig, coords, ax):
     numberings = _get_type(timeline, "numbering")
     for name in numberings:
         n = timeline[name]
-        #print(n)
+        # print(n)
 
 
-def render_events(timeline, coords, ax):
+def render_events(timeline, fig, coords, ax):
     events = _get_type(timeline, "event")
     for name in events:
         start_date = dateutil.parser.parse(timeline[name]["date"])
-        end_date = dateutil.parser.parse(timeline[name]["end"]) if "end" in timeline[name] else None
+        end_date = (
+            dateutil.parser.parse(timeline[name]["end"])
+            if "end" in timeline[name]
+            else None
+        )
         color = _encode_color(str(timeline[name].get("color", "black")))
         text_color = _encode_color(str(timeline[name].get("text_color", "black")))
         x = coords.get_date_coord(start_date)
         y = float(timeline[name].get("location", 0.90))
         if end_date is not None:
-            ax.axhline(y=1.0,
-                       xmin=x,
-                       xmax=coords.get_date_coord(end_date),
-                       color=color,
-                       linewidth=6.0)
-        ax.axvline(x=start_date,
-                   ymin=y,
-                   ymax=1.0,
-                   color=color,
-                   linewidth=0.5)
-        plt.text(start_date,
-                 y - coords.y_annotation_gap,
-                 name,
-                 color=text_color,
-                 fontsize=coords.annotation_fontsize)
+            ax.axhline(
+                y=1.0,
+                xmin=x,
+                xmax=coords.get_date_coord(end_date),
+                color=color,
+                linewidth=6.0,
+            )
+        ax.axvline(x=start_date, ymin=y, ymax=1.0, color=color, linewidth=0.5)
+        title_text = plt.text(
+            start_date,
+            y - coords.y_annotation_gap,
+            name.encode().decode("unicode_escape"),
+            verticalalignment="top",
+            color=text_color,
+            fontsize=coords.annotation_fontsize,
+        )
+
+        r = fig.canvas.get_renderer()
+        bb = title_text.get_window_extent(renderer=r)
+        point = ax.transData.inverted().transform(
+            (min(bb.intervalx), min(bb.intervaly))
+        )
+        lower_left = point[1]
+
         note = timeline[name].get("note")
         if note is not None:
-            plt.text(start_date,
-                     y - coords.y_annotation_gap - coords.note_gap,
-                     note,
-                     fontsize=coords.note_fontsize,
-                     fontstyle="italic",
-                     horizontalalignment="left")
-        #print(f"{name}: {start_date} to {end_date}, at {x:0.3f}, {y} in {color}")
+            plt.text(
+                start_date,
+                lower_left - coords.note_gap,
+                note,
+                fontsize=coords.note_fontsize,
+                fontstyle="italic",
+                horizontalalignment="left",
+            )
+        # print(f"{name}: {start_date} to {end_date}, at {x:0.3f}, {y} in {color}")
 
 
-def render_intervals(timeline, coords, ax):
+def render_intervals(timeline, fig, coords, ax):
     intervals = _get_type(timeline, "interval")
     for name in intervals:
         i = timeline[name]
@@ -181,29 +226,50 @@ def render_intervals(timeline, coords, ax):
         end = dateutil.parser.parse(i.get("end"))
 
         color = _encode_color(str(i.get("color", "black")))
+        linewidth = i.get("linewidth", 3.0)
+        linestyle = _encode_linestyle(i.get("linestyle", "solid"))
 
         xmin = coords.get_date_coord(start)
         xmax = coords.get_date_coord(end)
         y = i.get("location", 0.5)
-        #print(f"{name}: {xmin} to {xmax} at y={y}")
-        ax.axhline(y=y, xmin=xmin, xmax=xmax, color=color, linewidth=2.0)
-        plt.text(start + 0.5 * (end - start),
-                 y - coords.y_annotation_gap,
-                 name,
-                 fontsize=coords.annotation_fontsize,
-                 #weight="bold",
-                 horizontalalignment="center")
+        # print(f"{name}: {xmin} to {xmax} at y={y}")
+        ax.axhline(
+            y=y,
+            xmin=xmin,
+            xmax=xmax,
+            color=color,
+            linewidth=linewidth,
+            linestyle=linestyle,
+        )
+        title_text = plt.text(
+            start + 0.5 * (end - start),
+            y - 2 * coords.y_annotation_gap,
+            name,
+            fontsize=coords.annotation_fontsize,
+            verticalalignment="top",
+            horizontalalignment="center",
+        )
+
+        r = fig.canvas.get_renderer()
+        bb = title_text.get_window_extent(renderer=r)
+        point = ax.transData.inverted().transform(
+            (min(bb.intervalx), min(bb.intervaly))
+        )
+        lower_left = point[1]
+
         note = i.get("note")
         if note is not None:
-            plt.text(start + 0.5 * (end - start),
-                     y - coords.y_annotation_gap - coords.note_gap,
-                     note,
-                     fontsize=coords.note_fontsize,
-                     fontstyle="italic",
-                     horizontalalignment="center")
+            plt.text(
+                start + 0.5 * (end - start),
+                lower_left - coords.note_gap,
+                note,
+                fontsize=coords.note_fontsize,
+                fontstyle="italic",
+                horizontalalignment="center",
+            )
 
 
-def render_lines(timeline, coords, ax):
+def render_lines(timeline, fig, coords, ax):
     vlines = _get_type(timeline, "vertical line")
     for name in vlines:
         v = timeline[name]
@@ -232,10 +298,10 @@ def generate(timeline, filename, args, parser):
 
     fig, ax = setup_plot(timeline, coords, top_name)
 
-    render_numbering(timeline, coords, ax)
-    render_events(timeline, coords, ax)
-    render_intervals(timeline, coords, ax)
-    render_lines(timeline, coords, ax)
+    render_numbering(timeline, fig, coords, ax)
+    render_events(timeline, fig, coords, ax)
+    render_intervals(timeline, fig, coords, ax)
+    render_lines(timeline, fig, coords, ax)
 
     # write timeline output
     plt.savefig(filename)
@@ -244,9 +310,7 @@ def generate(timeline, filename, args, parser):
 def main():
     name = f"Timeline generator (epochs {epochs.__version__})"
     parser = argparse.ArgumentParser(description=name)
-    parser.add_argument("-v", "--version",
-                        action="version",
-                        version=name)
+    parser.add_argument("-v", "--version", action="version", version=name)
     parser.add_argument("filename", help="YAML input filename")
     parser.add_argument("-o", "--output", help="output filename")
     parser.add_argument("--verbose", help="output warnings", action="store_true")
