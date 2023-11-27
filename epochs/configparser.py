@@ -286,13 +286,11 @@ class ConfigParser(configparser.ConfigParser):
             self._write(file)
 
     def __repr__(self) -> str:
-        """Representation of config file
-        """
+        """Representation of config file"""
         return f'{self.__class__.__name__}("{self.spec_filename}")'
 
     def __str__(self) -> str:
-        """Config file as a string
-        """
+        """Config file as a string"""
         f = io.StringIO()
         self._write(f)
         f.seek(0)
@@ -456,13 +454,11 @@ class EpochConfigParser:
             self._write(file, space_around_delimiters=space_around_delimiters)
 
     def __repr__(self) -> str:
-        """Representation of config file
-        """
+        """Representation of config file"""
         return f'{self.__class__.__name__}("{self.spec.spec_filename}")'
 
     def __str__(self) -> str:
-        """Config file as a string
-        """
+        """Config file as a string"""
         f = io.StringIO()
         self._write(f)
         f.seek(0)
