@@ -65,7 +65,7 @@ exclude = '''
 
 [tool.pytest.ini_options]
 # increment the --cov-fail-under as we increase test coverage
-addopts = "--cov --cov-report html:coverage_html --cov-report term-missing --cov-fail-under 3"
+addopts = "--cov-report html:coverage_html --cov-report term-missing --cov-fail-under 80"
 
 [build-system]
 requires = ["hatchling"]
