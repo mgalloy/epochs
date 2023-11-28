@@ -156,8 +156,11 @@ def setup_plot(timeline, coords, top_name):
     plt.grid(which="major", axis="x", color=grid_color)
 
     # set title of timeline
-    plt.title(top_name, y=1.05)
-    plt.subplots_adjust(left=0.05, right=0.95, top=0.9, bottom=0.1)
+    plt.title(top_name, y=1.1)
+    plt.subplots_adjust(left=0.05, right=0.95, top=0.85, bottom=0.1)
+
+    plt.setp(ax.get_xticklabels(), rotation=-25, ha="left")
+    plt.setp(top_ax.get_xticklabels(), rotation=25, ha="left")
 
     return fig, ax
 
