@@ -89,6 +89,8 @@ class timeline_coords(object):
     note_fontsize = 6  # pts
     ticklabel_fontsize = 7  # pts
     line_height = 1.5
+    ax = None
+    top_ax = None
 
     def __init__(self, timeline, top_name):
         self.start_date = dateutil.parser.parse(timeline[top_name]["start"])
@@ -114,6 +116,9 @@ def setup_plot(timeline, coords, top_name):
     plt.tick_params(labelsize=coords.ticklabel_fontsize)
     top_ax = ax.twiny()
     plt.tick_params(labelsize=coords.ticklabel_fontsize)
+
+    coords.ax = ax
+    coords.top_ax = top_ax
 
     ticks = timeline[top_name].get("ticks", "weeks").lower()
 
@@ -165,16 +170,56 @@ def setup_plot(timeline, coords, top_name):
     return fig, ax
 
 
-def render_numbering(timeline, fig, coords, ax):
+def render_numbering(timeline, fig, coords, ax, verbose=False):
     numberings = _get_type(timeline, "numbering")
     for name in numberings:
+        if verbose:
+            print(f"numbering: {name}")
+
         n = timeline[name]
-        # print(n)
+
+        margin = 0.005
+        position = n["position"] if "position" in n else "top"
+        if position == "top":
+            va = "bottom"
+            yloc = 1.0 + margin
+            axis = coords.top_ax
+        elif position == "bottom":
+            va = "top"
+            yloc = 0.0 - margin
+            axis = coords.ax
+        else:
+            va = "bottom"
+            yloc = 1.0 + margin
+            axis = coords.top_ax
+
+        tick_locations = axis.get_xaxis().get_minor_locator()()
+
+        ha = n["alignment"] if "alignment" in n else "center"
+        if ha == "center":
+            xlocs = 0.5 * (tick_locations[1:] + tick_locations[0:-1])
+        elif ha == "left":
+            xlocs = tick_locations[0:-1]
+        elif ha == "right":
+            xlocs = tick_locations[1:]
+        else:
+            xlocs = 0.5 * (tick_locations[1:] + tick_locations[0:-1])
+
+        interval = n["interval"] if "interval" in n else "day"
+        value = int(n["initial_value"]) if "initial_value" in n else 1
+        for t, x in zip(tick_locations, xlocs):
+            if interval == "week" and "initial_value" not in n:
+                d = matplotlib.dates.num2date(t)
+                value = int(d.strftime("%W"))
+            plt.text(x, yloc, f"{value}", ha=ha, va=va, fontsize=5, color="#606060")
+            value += 1
 
 
-def render_events(timeline, fig, coords, ax):
+def render_events(timeline, fig, coords, ax, verbose=False):
     events = _get_type(timeline, "event")
     for name in events:
+        if verbose:
+            print(f"event: {name}")
         start_date = dateutil.parser.parse(timeline[name]["date"])
         end_date = (
             dateutil.parser.parse(timeline[name]["end"])
@@ -224,9 +269,11 @@ def render_events(timeline, fig, coords, ax):
         # print(f"{name}: {start_date} to {end_date}, at {x:0.3f}, {y} in {color}")
 
 
-def render_intervals(timeline, fig, coords, ax):
+def render_intervals(timeline, fig, coords, ax, verbose=False):
     intervals = _get_type(timeline, "interval")
     for name in intervals:
+        if verbose:
+            print(f"interval: {name}")
         i = timeline[name]
         start = dateutil.parser.parse(i.get("start"))
         end = dateutil.parser.parse(i.get("end"))
@@ -276,9 +323,11 @@ def render_intervals(timeline, fig, coords, ax):
             )
 
 
-def render_lines(timeline, fig, coords, ax):
+def render_lines(timeline, fig, coords, ax, verbose=False):
     vlines = _get_type(timeline, "vertical line")
     for name in vlines:
+        if verbose:
+            print(f"line: {name}")
         v = timeline[name]
 
         start_name = v.get("date")
@@ -305,10 +354,10 @@ def generate(timeline, filename, args, parser):
 
     fig, ax = setup_plot(timeline, coords, top_name)
 
-    render_numbering(timeline, fig, coords, ax)
-    render_events(timeline, fig, coords, ax)
-    render_intervals(timeline, fig, coords, ax)
-    render_lines(timeline, fig, coords, ax)
+    render_events(timeline, fig, coords, ax, verbose=args.verbose)
+    render_intervals(timeline, fig, coords, ax, verbose=args.verbose)
+    render_lines(timeline, fig, coords, ax, verbose=args.verbose)
+    render_numbering(timeline, fig, coords, ax, verbose=args.verbose)
 
     # write timeline output
     plt.savefig(filename)
