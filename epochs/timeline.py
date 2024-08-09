@@ -46,6 +46,16 @@ LINESTYLES = {
     "densely dashdotdotted": (0, (3, 1, 1, 1, 1, 1)),
 }
 
+TIMEDELTA_UNITS = {
+    "second": datetime.timedelta(seconds=1),
+    "minute": datetime.timedelta(minutes=1),
+    "hour": datetime.timedelta(hours=1),
+    "day": datetime.timedelta(days=1),
+    "week": datetime.timedelta(weeks=1),
+    "month": datetime.timedelta(days=30),
+    "year": datetime.timedelta(days=365),
+}
+
 
 def warn(msg):
     print(f"WARNING: {msg}")
@@ -269,8 +279,57 @@ def render_events(timeline, fig, coords, ax, verbose=False):
         # print(f"{name}: {start_date} to {end_date}, at {x:0.3f}, {y} in {color}")
 
 
+def _calculation_duration(duration: str) -> datetime.timedelta:
+    tokens = duration.split()
+    number = int(tokens[0])
+    units = tokens[1]
+    if units[-1] == "s":
+        units = units[0:-1]
+    timedelta_units = TIMEDELTA_UNITS[units]
+    return number * timedelta_units
+
+
 def render_intervals(timeline, fig, coords, ax, verbose=False):
     intervals = _get_type(timeline, "interval")
+
+    # define "start" for relatively define intervals
+    defined_intervals = []
+    undefined_intervals = []
+    for name in intervals:
+        if timeline[name].get("start") is None:
+            undefined_intervals.append(name)
+        else:
+            defined_intervals.append(name)
+
+    # extremely naive algorithm to define start for all undefined intervals
+    while len(defined_intervals) < len(intervals):
+        for name in undefined_intervals:
+            i = timeline[name]
+            start_after = i.get("start_after")
+            if start_after is not None:
+                start_after_end = timeline[start_after].get("end")
+                if start_after_end is None:
+                    start_after_start = timeline[start_after].get("start")
+                    if start_after_start is None:
+                        continue
+                    start_after_duration = timeline[start_after].get("duration")
+                    start_after_end = dateutil.parser.parse(
+                        start_after_start
+                    ) + _calculation_duration(start_after_duration)
+                i["start"] = start_after_end.strftime("%Y-%m-%d")
+                defined_intervals.append(name)
+            else:
+                print(f"undefined start for interval {name}")
+
+    # define "end" for intervals with duration
+    for name in intervals:
+        i = timeline[name]
+        if i.get("end") is None:
+            duration = i.get("duration")
+            duration_timedelta = _calculation_duration(duration)
+            start = dateutil.parser.parse(i.get("start"))
+            i["end"] = (start + duration_timedelta).strftime("%Y-%m-%d")
+
     for name in intervals:
         if verbose:
             print(f"interval: {name}")
