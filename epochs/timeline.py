@@ -431,7 +431,11 @@ def main():
     parser.add_argument("--verbose", help="output warnings", action="store_true")
     args = parser.parse_args()
 
-    timeline = load(args.filename)
+    try:
+        timeline = load(args.filename)
+    except FileNotFoundError:
+        parser.error(f"file not found: {args.filename}")
+
     if args.output is None:
         output_filename = os.path.splitext(args.filename)[0] + ".pdf"
     else:
