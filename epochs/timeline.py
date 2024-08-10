@@ -413,8 +413,8 @@ def generate(timeline, filename, args, parser):
 
     fig, ax = setup_plot(timeline, coords, top_name)
 
-    render_events(timeline, fig, coords, ax, verbose=args.verbose)
     render_intervals(timeline, fig, coords, ax, verbose=args.verbose)
+    render_events(timeline, fig, coords, ax, verbose=args.verbose)
     render_lines(timeline, fig, coords, ax, verbose=args.verbose)
     render_numbering(timeline, fig, coords, ax, verbose=args.verbose)
 
