@@ -95,7 +95,8 @@ def _encode_linestyle(linestyle):
 
 
 class timeline_coords(object):
-    annotation_fontsize = 8  # pts
+    annotation_fontsize = 5  # pts
+    interval_title_fontsize = 8  # pts
     note_fontsize = 6  # pts
     ticklabel_fontsize = 7  # pts
     line_height = 1.5
@@ -110,7 +111,7 @@ class timeline_coords(object):
         self.height = timeline[top_name].get("height", 8.0)
 
         self.y_annotation_gap = (
-            0.25 * self.line_height * self.annotation_fontsize / (self.height * 72)
+            0.25 * self.line_height * self.interval_title_fontsize / (self.height * 72)
         )  # 72 pts/inch
         self.note_gap = (
             0.25 * self.line_height * self.note_fontsize / (self.height * 72)
@@ -255,7 +256,7 @@ def render_events(timeline, fig, coords, ax, verbose=False):
             name.encode().decode("unicode_escape"),
             verticalalignment="top",
             color=text_color,
-            fontsize=coords.annotation_fontsize,
+            fontsize=coords.interval_title_fontsize,
         )
 
         r = fig.canvas.get_renderer()
@@ -353,11 +354,33 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
             linewidth=linewidth,
             linestyle=linestyle,
         )
+
+        annotation_value = i.get("annotation", "")
+        if annotation_value.find("start") >= 0:
+            annotation_format = i.get("annotation_format", "%Y-%m-%d")
+            annotation_text = plt.text(
+                start,
+                y + coords.y_annotation_gap,
+                "⇤" + start.strftime(annotation_format),
+                fontsize=coords.annotation_fontsize,
+                color="grey",
+            )
+        if annotation_value.find("end") >= 0:
+            annotation_format = i.get("annotation_format", "%Y-%m-%d")
+            annotation_text = plt.text(
+                end,
+                y + coords.y_annotation_gap,
+                end.strftime(annotation_format) + "⇥",
+                fontsize=coords.annotation_fontsize,
+                horizontalalignment="right",
+                color="grey",
+            )
+
         title_text = plt.text(
             start + 0.5 * (end - start),
             y - 2 * coords.y_annotation_gap,
             name.encode().decode("unicode_escape"),
-            fontsize=coords.annotation_fontsize,
+            fontsize=coords.interval_title_fontsize,
             verticalalignment="top",
             horizontalalignment="center",
         )
