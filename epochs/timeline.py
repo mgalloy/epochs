@@ -317,7 +317,11 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
                     start_after_end = dateutil.parser.parse(
                         start_after_start
                     ) + _calculation_duration(start_after_duration)
-                i["start"] = start_after_end.strftime("%Y-%m-%d")
+                i["start"] = (
+                    start_after_end
+                    if type(start_after_end) == str
+                    else start_after_end.strftime("%Y-%m-%d")
+                )
                 defined_intervals.append(name)
             else:
                 print(f"undefined start for interval {name}")
@@ -332,12 +336,11 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
             i["end"] = (start + duration_timedelta).strftime("%Y-%m-%d")
 
     for name in intervals:
-        if verbose:
-            print(f"interval: {name}")
         i = timeline[name]
         start = dateutil.parser.parse(i.get("start"))
         end = dateutil.parser.parse(i.get("end"))
-
+        if verbose:
+            print(f"interval {name}: {start:%Y-%m-%d} - {end:%Y-%m-%d}")
         color = _encode_color(str(i.get("color", "black")))
         linewidth = i.get("linewidth", 3.0)
         linestyle = _encode_linestyle(i.get("linestyle", "solid"))
@@ -376,10 +379,11 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
                 color="grey",
             )
 
+        title = i.get("title")
         title_text = plt.text(
             start + 0.5 * (end - start),
             y - 2 * coords.y_annotation_gap,
-            name.encode().decode("unicode_escape"),
+            (title if title is not None else name).encode().decode("unicode_escape"),
             fontsize=coords.interval_title_fontsize,
             verticalalignment="top",
             horizontalalignment="center",
