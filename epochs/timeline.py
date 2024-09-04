@@ -124,6 +124,8 @@ class timeline_coords(object):
 def setup_plot(timeline, coords, top_name):
     fig, ax = plt.subplots(figsize=(coords.width, coords.height))
 
+    axes_name = timeline[top_name].get("axes", "").lower()
+
     plt.tick_params(labelsize=coords.ticklabel_fontsize)
     top_ax = ax.twiny()
     plt.tick_params(labelsize=coords.ticklabel_fontsize)
@@ -145,6 +147,10 @@ def setup_plot(timeline, coords, top_name):
         tick_format = timeline[top_name].get("tick-format", "%b %y")
         major_locator = mdates.MonthLocator(interval=1)
         minor_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
+    elif ticks == "years":
+        tick_format = timeline[top_name].get("tick-format", "%y")
+        major_locator = mdates.YearLocator(month=1)
+        minor_locator = mdates.MonthLocator(interval=1)
     else:
         tick_format = timeline[top_name].get("tick-format", "%d %b %y")
         minor_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
@@ -164,6 +170,9 @@ def setup_plot(timeline, coords, top_name):
         ax.spines[spine].set_visible(False)
         top_ax.spines[spine].set_visible(False)
 
+    ax.get_xaxis().set_visible(axes_name in ["bottom", "both"])
+    top_ax.get_xaxis().set_visible(axes_name in ["top", "both"])
+
     ax.set_xlim([coords.start_date, coords.end_date])
     top_ax.set_xlim(ax.get_xlim())
 
@@ -172,8 +181,26 @@ def setup_plot(timeline, coords, top_name):
     plt.grid(which="major", axis="x", color=grid_color)
 
     # set title of timeline
-    plt.title(top_name, y=1.1)
-    plt.subplots_adjust(left=0.05, right=0.95, top=0.85, bottom=0.1)
+    title = timeline[top_name].get("title")
+    title = (title if title is not None else top_name).encode().decode("unicode_escape")
+    plt.title(title, y=1.1)
+
+    left_margin = timeline[top_name].get("left-margin", None)
+    right_margin = timeline[top_name].get("right-margin", None)
+    top_margin = timeline[top_name].get("top-margin", None)
+    bottom_margin = timeline[top_name].get("bottom-margin", None)
+
+    left_margin = 0.05 if left_margin is None else left_margin / coords.width
+    right_margin = 0.05 if right_margin is None else right_margin / coords.width
+    top_margin = 0.05 if top_margin is None else top_margin / coords.height
+    bottom_margin = 0.05 if bottom_margin is None else bottom_margin / coords.height
+
+    plt.subplots_adjust(
+        left=left_margin,
+        right=1.0 - right_margin,
+        top=1.0 - top_margin,
+        bottom=bottom_margin,
+    )
 
     plt.setp(ax.get_xticklabels(), rotation=-25, ha="left")
     plt.setp(top_ax.get_xticklabels(), rotation=25, ha="left")
@@ -250,10 +277,11 @@ def render_events(timeline, fig, coords, ax, verbose=False):
                 linewidth=6.0,
             )
         ax.axvline(x=start_date, ymin=y, ymax=1.0, color=color, linewidth=0.5)
+        title = timeline[name].get("title")
         title_text = plt.text(
             start_date,
             y - coords.y_annotation_gap,
-            name.encode().decode("unicode_escape"),
+            (title if title is not None else name).encode().decode("unicode_escape"),
             verticalalignment="top",
             color=text_color,
             fontsize=coords.interval_title_fontsize,
