@@ -150,7 +150,7 @@ def test_configparser_is_notvalid():
     assert not cp.is_valid()  # has "extra_option" not in spec
 
 
-def test_inheritance():
+def test_override():
     cp = epochs.ConfigParser(os.path.join(DATA_DIR, "spec.cfg"))
     cp.read([os.path.join(DATA_DIR, "site.cfg"), os.path.join(DATA_DIR, "user.cfg")])
     max_version = cp.get("logging", "max_version")
@@ -159,6 +159,17 @@ def test_inheritance():
 
     max_width = cp.get("logging", "max_width")
     assert max_width == 100
+
+
+def test_inheritance():
+    cp = epochs.ConfigParser(os.path.join(DATA_DIR, "spec.cfg"), inherit="parent/path")
+    cp.read(os.path.join(DATA_DIR, "child.cfg"))
+    logging_level = cp.get("logging", "level")
+
+    assert logging_level == "INFO"
+
+
+#     assert cp.is_valid()
 
 
 def test_epochparser():
