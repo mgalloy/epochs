@@ -110,6 +110,10 @@ class timeline_coords(object):
         self.width = timeline[top_name].get("width", 8.0)
         self.height = timeline[top_name].get("height", 8.0)
 
+        self.time_tick_display_cadence = timeline[top_name].get(
+            "time_tick_display_cadence", 1
+        )
+
         self.y_annotation_gap = (
             0.25 * self.line_height * self.interval_title_fontsize / (self.height * 72)
         )  # 72 pts/inch
@@ -119,6 +123,31 @@ class timeline_coords(object):
 
     def get_date_coord(self, date):
         return (date - self.start_date) / (self.end_date - self.start_date)
+
+
+def get_locator(timeline, top_name, ticks):
+    if ticks == "days":
+        tick_format = timeline[top_name].get("tick-format", "%d %b %y")
+        major_locator = mdates.DayLocator(interval=1)
+        minor_locator = None
+    elif ticks == "weeks":
+        tick_format = timeline[top_name].get("tick-format", "%d %b %y")
+        major_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
+        minor_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
+    elif ticks == "months":
+        tick_format = timeline[top_name].get("tick-format", "%b %y")
+        major_locator = mdates.MonthLocator(interval=1)
+        minor_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
+    elif ticks == "years":
+        tick_format = timeline[top_name].get("tick-format", "%y")
+        major_locator = mdates.YearLocator(month=1)
+        minor_locator = mdates.MonthLocator(interval=1)
+    else:
+        tick_format = timeline[top_name].get("tick-format", "%d %b %y")
+        major_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
+        minor_locator = None
+
+    return tick_format, major_locator, minor_locator
 
 
 def setup_plot(timeline, coords, top_name):
@@ -135,26 +164,7 @@ def setup_plot(timeline, coords, top_name):
 
     ticks = timeline[top_name].get("ticks", "weeks").lower()
 
-    if ticks == "days":
-        tick_format = timeline[top_name].get("tick-format", "%d %b %y")
-        major_locator = mdates.DayLocator(interval=1)
-        minor_locator = None
-    elif ticks == "weeks":
-        tick_format = timeline[top_name].get("tick-format", "%d %b %y")
-        major_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=4)
-        minor_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
-    elif ticks == "months":
-        tick_format = timeline[top_name].get("tick-format", "%b %y")
-        major_locator = mdates.MonthLocator(interval=1)
-        minor_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
-    elif ticks == "years":
-        tick_format = timeline[top_name].get("tick-format", "%y")
-        major_locator = mdates.YearLocator(month=1)
-        minor_locator = mdates.MonthLocator(interval=1)
-    else:
-        tick_format = timeline[top_name].get("tick-format", "%d %b %y")
-        minor_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
-        minor_locator = None
+    tick_format, major_locator, minor_locator = get_locator(timeline, top_name, ticks)
 
     ax.get_xaxis().set_major_locator(major_locator)
     top_ax.get_xaxis().set_major_locator(major_locator)
@@ -177,7 +187,7 @@ def setup_plot(timeline, coords, top_name):
     top_ax.set_xlim(ax.get_xlim())
 
     grid_color = "#e8e8e8"
-    plt.grid(which="minor", axis="x", linestyle=":", color=grid_color)
+    # plt.grid(which="minor", axis="x", linestyle=":", color=grid_color)
     plt.grid(which="major", axis="x", color=grid_color)
 
     # set title of timeline
@@ -205,6 +215,14 @@ def setup_plot(timeline, coords, top_name):
     plt.setp(ax.get_xticklabels(), rotation=-25, ha="left")
     plt.setp(top_ax.get_xticklabels(), rotation=25, ha="left")
 
+    for i, label in enumerate(ax.xaxis.get_ticklabels()):
+        if i % coords.time_tick_display_cadence != 0:
+            label.set_visible(False)
+
+    for i, label in enumerate(top_ax.xaxis.get_ticklabels()):
+        if i % coords.time_tick_display_cadence != 0:
+            label.set_visible(False)
+
     return fig, ax
 
 
@@ -231,7 +249,19 @@ def render_numbering(timeline, fig, coords, ax, verbose=False):
             yloc = 1.0 + margin
             axis = coords.top_ax
 
-        tick_locations = axis.get_xaxis().get_minor_locator()()
+        interval = n["interval"] if "interval" in n else "days"
+
+        # TODO: need to find a better way to specify these locations using the
+        # value of interval
+        top_name = _get_type(timeline, "timeline")[0]
+        format, major_locator, minor_locator = get_locator(timeline, top_name, interval)
+        vmin, vmax = axis.get_xlim()
+        tick_locations = major_locator.tick_values(
+            mdates.num2date(vmin), mdates.num2date(vmax)
+        )
+
+        # tick_locations = axis.get_xaxis().get_minor_locator()()
+        # tick_locations = axis.get_xaxis().get_major_locator()()
 
         ha = n["alignment"] if "alignment" in n else "center"
         if ha == "center":
@@ -243,10 +273,9 @@ def render_numbering(timeline, fig, coords, ax, verbose=False):
         else:
             xlocs = 0.5 * (tick_locations[1:] + tick_locations[0:-1])
 
-        interval = n["interval"] if "interval" in n else "day"
         value = int(n["initial_value"]) if "initial_value" in n else 1
         for t, x in zip(tick_locations, xlocs):
-            if interval == "week" and "initial_value" not in n:
+            if interval == "weeks" and "initial_value" not in n:
                 d = matplotlib.dates.num2date(t)
                 value = int(d.strftime("%W"))
             plt.text(x, yloc, f"{value}", ha=ha, va=va, fontsize=5, color="#606060")
