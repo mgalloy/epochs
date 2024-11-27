@@ -84,7 +84,7 @@ def _encode_color(color):
         color = named_colors[color]
     elif not _valid_hexcolor(color):
         warn(
-            f'{name} interval color "{color}" not a named color or 6-digit hex value, using black'
+            f'interval color "{color}" not a named color or 6-digit hex value, using black'
         )
         color = "#000000"
     return color
