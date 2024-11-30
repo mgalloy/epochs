@@ -294,7 +294,8 @@ def render_events(timeline, fig, coords, ax, verbose=False):
             else None
         )
         color = _encode_color(str(timeline[name].get("color", "black")))
-        text_color = _encode_color(str(timeline[name].get("text_color", "black")))
+        title_color = _encode_color(str(timeline[name].get("title_color", "black")))
+        note_color = _encode_color(str(timeline[name].get("note_color", "black")))
         x = coords.get_date_coord(start_date)
         y = float(timeline[name].get("location", 0.90))
         if end_date is not None:
@@ -312,7 +313,7 @@ def render_events(timeline, fig, coords, ax, verbose=False):
             y - coords.y_annotation_gap,
             (title if title is not None else name).encode().decode("unicode_escape"),
             verticalalignment="top",
-            color=text_color,
+            color=title_color,
             fontsize=coords.interval_title_fontsize,
         )
 
@@ -330,6 +331,7 @@ def render_events(timeline, fig, coords, ax, verbose=False):
                 lower_left - coords.note_gap,
                 note.encode().decode("unicode_escape"),
                 verticalalignment="top",
+                color=note_color,
                 fontsize=coords.note_fontsize,
                 fontstyle="italic",
                 horizontalalignment="left",
@@ -399,6 +401,8 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
         if verbose:
             print(f"interval {name}: {start:%Y-%m-%d} - {end:%Y-%m-%d}")
         color = _encode_color(str(i.get("color", "black")))
+        title_color = _encode_color(str(timeline[name].get("title_color", "black")))
+        note_color = _encode_color(str(timeline[name].get("note_color", "black")))
         linewidth = i.get("linewidth", 3.0)
         linestyle = _encode_linestyle(i.get("linestyle", "solid"))
 
@@ -444,6 +448,7 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
             fontsize=coords.interval_title_fontsize,
             verticalalignment="top",
             horizontalalignment="center",
+            color=title_color,
         )
 
         r = fig.canvas.get_renderer()
@@ -460,6 +465,7 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
                 lower_left - coords.note_gap,
                 note.encode().decode("unicode_escape"),
                 verticalalignment="top",
+                color=note_color,
                 fontsize=coords.note_fontsize,
                 fontstyle="italic",
                 horizontalalignment="center",
