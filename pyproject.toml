@@ -38,6 +38,7 @@ dev = [
 
 [project.scripts]
 timeline = "epochs:timeline.main"
+epochs = "epochs:cli.main"
 
 [tool.black]
 line-length = 88
