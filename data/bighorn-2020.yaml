@@ -2,11 +2,22 @@ Bighorn 2020 schedule:
   type: timeline
   start: 09-16-2019
   end: 07-31-2020
-  ticks: weeks              # days, weeks, or months
-  tick-format: "%d-%b-%Y"
   axes: both                # top, bottom, or both
   width: 10.5               # inches
   height: 7.5               # inches
+  ticks: weeks              # days, weeks, or months
+  tick-format: "%d %b %Y"
+
+season week:
+  type: numbering
+  initial_value: 1
+  alignment: center
+  position: both
+
+year week:
+  type: numbering
+  alignment: center         # left, right, or center
+  position: both            # top, bottom, or both
 
 Fire on the Bayou:
   type: event
@@ -15,11 +26,19 @@ Fire on the Bayou:
   color: red
   note: 3/28-29
 
+Announce roster:
+  type: event
+  date: 06-10-02020
+  color: red
+  location: 0.80
+
 Regionals:
   type: event
   date: 06-13-2020
+  end: 06-14-2020
   color: red
-  note: 6/13?
+  location: 0.85
+  note: "6/13-14 Location: TBD"
 
 Masters Nationals:
   type: event
@@ -32,29 +51,29 @@ Non-daylight savings time:
   type: interval
   start: 11-03-2019
   end: 03-08-2020
-  color: darkblue
-  location: 0.975
+  color: "#808080"
+  location: 0.95
 
 Goaltimate:
   type: interval
   start: 10-5-2019
   end: 3-8-2020
-  color: violet
-  location: 0.1
+  color: lightblue
+  location: 0.15
 
 Fall league:
   type: interval
   start: 9-8-2019
   end: 11-12-2019
   color: green
-  location: 0.05
+  location: 0.10
 
 Spring league:
   type: interval
   start: 3-15-2020
   end: 5-18-2020
   color: green
-  location: 0.05
+  location: 0.10
   note: approximate times
 
 Summer league:
@@ -62,5 +81,10 @@ Summer league:
   start: 5-31-2020
   end: 8-17-2020
   color: green
-  location: 0.05
+  location: 0.10
   note: approximate times
+
+Now indicator:
+  type: vertical line
+  date: 2-28-2020
+  color: red

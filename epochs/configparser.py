@@ -11,6 +11,7 @@ import collections
 import configparser
 import datetime
 import io
+import os
 import re
 from typing import List, TypeVar, TextIO
 
@@ -29,8 +30,8 @@ OptionSpec.__doc__ = """Specification for an option"""
 TYPES = {"bool": bool, "boolean": bool, "float": float, "int": int, "str": str}
 
 identifier_re = re.compile('[^,="]')
-whitespace_re = re.compile("\s")
-listtypes_re = re.compile("List\[(.*)\]")
+whitespace_re = re.compile(r"\s")
+listtypes_re = re.compile(r"List\[(.*)\]")
 
 
 def _parse_specline_tokens(specline: str) -> OptionSpec:
@@ -194,13 +195,18 @@ class ConfigParser(configparser.ConfigParser):
     specification and uses types/defaults from the specification.
     """
 
-    def __init__(self, spec_filename: str = None, **kwargs) -> None:
+    def __init__(
+        self, spec_filename: str = None, inherit: str = None, **kwargs
+    ) -> None:
         """Create a ConfigParser object
 
         spec_filename : str
             file to use as a specification
         """
         super().__init__(**kwargs)
+
+        self.parent = None
+        self.parent_option = inherit
 
         self.spec_filename = spec_filename
 
@@ -237,10 +243,21 @@ class ConfigParser(configparser.ConfigParser):
         specline = self.specification.get(section, option)
         spec = _parse_specline(specline)
 
-        if not super().has_option(section, option):
-            return spec.default
+        found_value = False
 
-        value = super().get(section, option, raw=raw, **kwargs)
+        if self.has_option(section, option):
+            value = super().get(section, option, raw=raw, **kwargs)
+            found_value = True
+
+        if self.parent_option is not None and not self.has_option(section, option):
+            if self.parent is not None:
+                value = self.parent.get(
+                    section, option, raw=raw, use_spec=use_spec, **kwargs
+                )
+                found_value = True
+
+        if not super().has_option(section, option) and not found_value:
+            return spec.default
 
         return value if raw else _convert(value, spec.type, spec.list)
 
@@ -269,6 +286,23 @@ class ConfigParser(configparser.ConfigParser):
                 v = self.get(s, o)
                 fileobject.write(f"{o:{max_len}s} = {v}\n")
 
+    def read(self, filenames, encoding=None):
+        read_ok = super().read(filenames, encoding=encoding)
+        if self.parent_option is not None:
+            parent_section, parent_option = self.parent_option.split("/")
+            if self.has_option(parent_section, parent_option):
+                parent_name = self.get(parent_section, parent_option)
+                if type(filenames) == str:
+                    filenames = [filenames]
+                for f in filenames:
+                    parent_path = os.path.join(os.path.dirname(f), parent_name)
+                    self.parent = ConfigParser(
+                        spec_filename=self.spec_filename, inherit=self.parent_option
+                    )
+                    self.parent.read(parent_path)
+
+        return read_ok
+
     def write(self, file: FileType, space_around_delimiters: bool = True) -> None:
         """Write config file to a file-like object
 
@@ -286,13 +320,11 @@ class ConfigParser(configparser.ConfigParser):
             self._write(file)
 
     def __repr__(self) -> str:
-        """Representation of config file
-        """
+        """Representation of config file"""
         return f'{self.__class__.__name__}("{self.spec_filename}")'
 
     def __str__(self) -> str:
-        """Config file as a string
-        """
+        """Config file as a string"""
         f = io.StringIO()
         self._write(f)
         f.seek(0)
@@ -456,13 +488,11 @@ class EpochConfigParser:
             self._write(file, space_around_delimiters=space_around_delimiters)
 
     def __repr__(self) -> str:
-        """Representation of config file
-        """
+        """Representation of config file"""
         return f'{self.__class__.__name__}("{self.spec.spec_filename}")'
 
     def __str__(self) -> str:
-        """Config file as a string
-        """
+        """Config file as a string"""
         f = io.StringIO()
         self._write(f)
         f.seek(0)

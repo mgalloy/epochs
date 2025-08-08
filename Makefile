@@ -51,27 +51,27 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr .pytest_cache
 
 black:  ## fix style
-	poetry run black epochs tests
+	black epochs tests
 
 lint: ## check style with flake8
-	poetry run flake8 epochs tests
+	flake8 epochs tests
 
 test: ## run tests quickly with the default Python
-	poetry run pytest
+	pytest tests
 
 test-all: ## run tests on every Python version with tox
-	poetry run tox
+	tox
 
 coverage: ## check code coverage quickly with the default Python
-	poetry run coverage run --source epochs -m pytest
-	poetry run coverage report -m
-	poetry run coverage html
+	coverage run --source epochs -m pytest tests
+	coverage report -m
+	coverage html
 	$(BROWSER) htmlcov/index.html
 
 docs: ## generate Sphinx HTML documentation, including API docs
 	rm -f docs/epochs.rst
 	rm -f docs/modules.rst
-	poetry run sphinx-apidoc -o docs/ epochs
+	sphinx-apidoc -o docs/ epochs
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
 	$(BROWSER) docs/_build/html/index.html
