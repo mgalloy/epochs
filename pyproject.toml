@@ -28,7 +28,7 @@ twine = "^1.13"
 coverage = "^4.5"
 flake8 = "^3.7"
 pytest-runner = "^4.4"
-black = { version = "*", allows-prereleases = true }
+black = { version = "*", allow-prereleases = true }
 sphinx_rtd_theme = "^0.4.3"
 
 [tool.poetry.scripts]
