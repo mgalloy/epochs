@@ -24,7 +24,7 @@ import epochs
 
 
 named_colors = matplotlib.colors.get_named_colors_mapping()
-hex_color_re = re.compile("^#[abcdef0-9]{6}$")
+hex_color_re = re.compile("^#[ABCDEFabcdef0-9]{6}$")
 
 LINESTYLES = {
     "solid": "solid",
@@ -92,6 +92,10 @@ def _encode_color(color):
 
 def _encode_linestyle(linestyle):
     return LINESTYLES[linestyle]
+
+
+class ParsingError(Exception):
+    """Throw if there is any parsing error in the timeline specification."""
 
 
 class timeline_coords(object):
@@ -226,6 +230,42 @@ def setup_plot(timeline, coords, top_name):
     return fig, ax
 
 
+def render_values(timeline, fig, coords, ax, verbose=False):
+    values = _get_type(timeline, "value")
+    for name in values:
+        if verbose:
+            print(f"value: {name}")
+
+        v = timeline[name]
+        interval = v["interval"]
+        interval_values = v["value"].split()
+        yloc = v["location"]
+        rotation = v["rotation"] if "rotation" in v else "horizontal"
+        fontsize = v["fontsize"] if "fontsize" in v else 4
+
+        axis = coords.ax
+
+        top_name = _get_type(timeline, "timeline")[0]
+        format, major_locator, minor_locator = get_locator(timeline, top_name, interval)
+        vmin, vmax = axis.get_xlim()
+        tick_locations = major_locator.tick_values(
+            mdates.num2date(vmin), mdates.num2date(vmax)
+        )
+        xlocs = 0.5 * (tick_locations[1:] + tick_locations[0:-1])
+
+        for t, x, interval_value in zip(tick_locations, xlocs, interval_values):
+            plt.text(
+                x,
+                yloc,
+                f"{interval_value}",
+                ha="center",
+                va="bottom",
+                rotation=rotation,
+                fontsize=fontsize,
+                color="#606060",
+            )
+
+
 def render_numbering(timeline, fig, coords, ax, verbose=False):
     numberings = _get_type(timeline, "numbering")
     for name in numberings:
@@ -250,6 +290,7 @@ def render_numbering(timeline, fig, coords, ax, verbose=False):
             axis = coords.top_ax
 
         interval = n["interval"] if "interval" in n else "days"
+        fontsize = n["fontsize"] if "fontsize" in n else 5
 
         # TODO: need to find a better way to specify these locations using the
         # value of interval
@@ -278,7 +319,9 @@ def render_numbering(timeline, fig, coords, ax, verbose=False):
             if interval == "weeks" and "initial_value" not in n:
                 d = matplotlib.dates.num2date(t)
                 value = int(d.strftime("%W"))
-            plt.text(x, yloc, f"{value}", ha=ha, va=va, fontsize=5, color="#606060")
+            plt.text(
+                x, yloc, f"{value}", ha=ha, va=va, fontsize=fontsize, color="#606060"
+            )
             value += 1
 
 
@@ -367,6 +410,8 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
             i = timeline[name]
             start_after = i.get("start_after")
             if start_after is not None:
+                if start_after not in timeline:
+                    raise ParsingError(f"unknown interval '{start_after}'")
                 start_after_end = timeline[start_after].get("end")
                 if start_after_end is None:
                     start_after_start = timeline[start_after].get("start")
@@ -507,6 +552,7 @@ def generate(timeline, filename, args, parser):
     render_events(timeline, fig, coords, ax, verbose=args.verbose)
     render_lines(timeline, fig, coords, ax, verbose=args.verbose)
     render_numbering(timeline, fig, coords, ax, verbose=args.verbose)
+    render_values(timeline, fig, coords, ax, verbose=args.verbose)
 
     # write timeline output
     plt.savefig(filename)
@@ -534,7 +580,10 @@ def main():
     if not args.verbose:
         warnings.filterwarnings("ignore")
 
-    generate(timeline, output_filename, args, parser)
+    try:
+        generate(timeline, output_filename, args, parser)
+    except ParsingError as e:
+        print(f"exiting with fatal error: {e}")
 
 
 if __name__ == "__main__":
