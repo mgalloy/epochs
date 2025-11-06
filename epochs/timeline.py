@@ -7,6 +7,7 @@ import argparse
 import datetime
 import os
 import re
+import textwrap
 import warnings
 
 import dateutil.parser
@@ -94,14 +95,18 @@ def _encode_linestyle(linestyle):
     return LINESTYLES[linestyle]
 
 
+def _encode_boolean(value):
+    if isinstance(value, bool):
+        return value
+    return value.lower() in ["yes", "true"]
+
+
 class ParsingError(Exception):
     """Throw if there is any parsing error in the timeline specification."""
 
 
 class timeline_coords(object):
     annotation_fontsize = 5  # pts
-    interval_title_fontsize = 8  # pts
-    note_fontsize = 6  # pts
     ticklabel_fontsize = 7  # pts
     line_height = 1.5
     ax = None
@@ -113,6 +118,9 @@ class timeline_coords(object):
 
         self.width = timeline[top_name].get("width", 8.0)
         self.height = timeline[top_name].get("height", 8.0)
+
+        self.interval_title_fontsize = timeline[top_name].get("title_fontsize", 8)
+        self.note_fontsize = timeline[top_name].get("note_fontsize", 6)  # pts
 
         self.time_tick_display_cadence = timeline[top_name].get(
             "time_tick_display_cadence", 1
@@ -146,6 +154,10 @@ def get_locator(timeline, top_name, ticks):
         tick_format = timeline[top_name].get("tick-format", "%y")
         major_locator = mdates.YearLocator(month=1)
         minor_locator = mdates.MonthLocator(interval=1)
+    elif ticks == "hours":
+        tick_format = timeline[top_name].get("tick-format", "%H")
+        major_locator = mdates.HourLocator(interval=1)
+        minor_locator = mdates.MinuteLocator(interval=15)
     else:
         tick_format = timeline[top_name].get("tick-format", "%d %b %y")
         major_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
@@ -330,7 +342,11 @@ def render_events(timeline, fig, coords, ax, verbose=False):
     for name in events:
         if verbose:
             print(f"event: {name}")
-        start_date = dateutil.parser.parse(timeline[name]["date"])
+        start_dt = timeline[name]["date"]
+        if isinstance(start_dt, datetime.datetime):
+            start_date = start_dt
+        else:
+            start_date = dateutil.parser.parse(timeline[name]["date"])
         end_date = (
             dateutil.parser.parse(timeline[name]["end"])
             if "end" in timeline[name]
@@ -341,6 +357,7 @@ def render_events(timeline, fig, coords, ax, verbose=False):
         note_color = _encode_color(str(timeline[name].get("note_color", "black")))
         x = coords.get_date_coord(start_date)
         y = float(timeline[name].get("location", 0.90))
+        wrap = timeline[name].get("wrap", None)
         if end_date is not None:
             ax.axhline(
                 y=1.0,
@@ -369,16 +386,24 @@ def render_events(timeline, fig, coords, ax, verbose=False):
 
         note = timeline[name].get("note")
         if note is not None:
-            plt.text(
+            note_text = note.encode().decode("unicode_escape")
+            if wrap is not None:
+                note_text = "\n".join(
+                    textwrap.wrap(note_text, wrap, replace_whitespace=False)
+                )
+
+            p = plt.text(
                 start_date,
                 lower_left - coords.note_gap,
-                note.encode().decode("unicode_escape"),
+                note_text,
                 verticalalignment="top",
                 color=note_color,
                 fontsize=coords.note_fontsize,
                 fontstyle="italic",
                 horizontalalignment="left",
             )
+            print(p.get_clip_box())
+            print(p.get_position())
         # print(f"{name}: {start_date} to {end_date}, at {x:0.3f}, {y} in {color}")
 
 
