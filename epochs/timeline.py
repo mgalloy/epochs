@@ -402,8 +402,6 @@ def render_events(timeline, fig, coords, ax, verbose=False):
                 fontstyle="italic",
                 horizontalalignment="left",
             )
-            print(p.get_clip_box())
-            print(p.get_position())
         # print(f"{name}: {start_date} to {end_date}, at {x:0.3f}, {y} in {color}")
 
 
