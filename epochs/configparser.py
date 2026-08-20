@@ -332,7 +332,11 @@ class ConfigParser(configparser.ConfigParser):
 
     def is_valid(self, allow_extra_options: bool = False) -> bool:
         """Verify that the ``ConfigParser`` matches the specification. A
-        ``ConfigParser`` without a spec is automatically valid.
+        ``ConfigParser`` without a spec is automatically valid. Raises
+        `KeyError` if config file has an option that is not in the spec
+        unless `allow_extra_options` is set. This method will return False
+        for a config file that does not provide a value for all non-optional
+        options without a default value.
         """
         if self.specification is None:
             return True
@@ -344,8 +348,7 @@ class ConfigParser(configparser.ConfigParser):
                     if self.has_option("DEFAULT", o):
                         continue
                     if not self.specification.has_option(s, o):
-                        print(f"section={s}, option={o}")
-                        return False
+                        raise KeyError(f"invalid section={s}, option={o}")
 
         # check that all options without a default value are given by f
         for s in self.specification.sections():
@@ -402,6 +405,7 @@ class EpochConfigParser:
                         return dt
                     except ValueError:
                         pass
+
 
     @property
     def formats(self):
