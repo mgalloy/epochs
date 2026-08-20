@@ -264,7 +264,9 @@ def render_values(timeline, fig, coords, ax, verbose=False):
             mdates.num2date(vmin), mdates.num2date(vmax)
         )
         xlocs = 0.5 * (tick_locations[1:] + tick_locations[0:-1])
-
+        start_week = v["start_week"] if "start_week" in v else 1
+        tick_locations = tick_locations[start_week - 1 :]
+        xlocs = xlocs[start_week - 1 :]
         for t, x, interval_value in zip(tick_locations, xlocs, interval_values):
             plt.text(
                 x,

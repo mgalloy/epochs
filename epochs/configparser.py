@@ -126,6 +126,8 @@ def _convert(value: str, type_value: type, is_list: bool = False) -> OptionValue
     if is_list:
         return [_convert(v, type_value, False) for v in _parse_list(value) if v != ""]
     else:
+        if type(value) == type_value:
+            return value
         if type_value == bool:
             if value.lower() in {"yes", "true", "1"}:
                 return True
@@ -341,6 +343,8 @@ class ConfigParser(configparser.ConfigParser):
         if self.specification is None:
             return True
 
+        # [TODO]: .has_option, .options, and .sections need to use inheritance
+
         # check that every option given by f is in specification
         if not allow_extra_options:
             for s in self.sections():
@@ -358,6 +362,7 @@ class ConfigParser(configparser.ConfigParser):
                 specline = self.specification.get(s, o)
                 spec = _parse_specline(specline)
                 if spec.required and not self.has_option(s, o):
+                    print(f"section={s}, option={o} not defined in spec or file")
                     return False
 
         # TODO: make sure values are the correct type?
