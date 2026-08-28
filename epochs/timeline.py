@@ -14,6 +14,7 @@ import dateutil.parser
 import matplotlib
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+import numpy as np
 import yaml
 
 try:
@@ -122,6 +123,8 @@ class timeline_coords(object):
         self.interval_title_fontsize = timeline[top_name].get("title_fontsize", 8)
         self.note_fontsize = timeline[top_name].get("note_fontsize", 6)  # pts
 
+        self.band_title_fontsize = timeline[top_name].get("title_fontsize", 8)
+
         self.time_tick_display_cadence = timeline[top_name].get(
             "time_tick_display_cadence", 1
         )
@@ -175,6 +178,8 @@ def setup_plot(timeline, coords, top_name):
     top_ax = ax.twiny()
     plt.tick_params(labelsize=coords.ticklabel_fontsize)
 
+    ax.set_autoscale_on(False)
+
     coords.ax = ax
     coords.top_ax = top_ax
 
@@ -201,6 +206,9 @@ def setup_plot(timeline, coords, top_name):
 
     ax.set_xlim([coords.start_date, coords.end_date])
     top_ax.set_xlim(ax.get_xlim())
+
+    ax.set_ylim([0.0, 1.0])
+    top_ax.set_ylim([0.0, 1.0])
 
     grid_color = "#e8e8e8"
     # plt.grid(which="minor", axis="x", linestyle=":", color=grid_color)
@@ -542,6 +550,147 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
             )
 
 
+def render_bands(timeline, fig, coords, ax, verbose=False):
+    bands = _get_type(timeline, "band")
+
+    # define "start" for relatively define bands
+    defined_bands = []
+    undefined_bands = []
+    for name in bands:
+        if timeline[name].get("start") is None:
+            undefined_bands.append(name)
+        else:
+            defined_bands.append(name)
+
+    # extremely naive algorithm to define start for all undefined bands
+    while len(defined_bands) < len(bands):
+        for name in undefined_bands:
+            i = timeline[name]
+            start_after = i.get("start_after")
+            if start_after is not None:
+                if start_after not in timeline:
+                    raise ParsingError(f"unknown band '{start_after}'")
+                start_after_end = timeline[start_after].get("end")
+                if start_after_end is None:
+                    start_after_start = timeline[start_after].get("start")
+                    if start_after_start is None:
+                        continue
+                    start_after_duration = timeline[start_after].get("duration")
+                    start_after_end = dateutil.parser.parse(
+                        start_after_start
+                    ) + _calculation_duration(start_after_duration)
+                i["start"] = (
+                    start_after_end
+                    if type(start_after_end) == str
+                    else start_after_end.strftime("%Y-%m-%d")
+                )
+                defined_bands.append(name)
+            else:
+                print(f"undefined start for band {name}")
+
+    # define "end" for bands with duration
+    for name in bands:
+        i = timeline[name]
+        if i.get("end") is None:
+            duration = i.get("duration")
+            duration_timedelta = _calculation_duration(duration)
+            start = dateutil.parser.parse(i.get("start"))
+            i["end"] = (start + duration_timedelta).strftime("%Y-%m-%d")
+
+    for name in bands:
+        i = timeline[name]
+        start = dateutil.parser.parse(i.get("start"))
+        end = dateutil.parser.parse(i.get("end"))
+        if verbose:
+            print(f"band {name}: {start:%Y-%m-%d} - {end:%Y-%m-%d}")
+        fillcolor = _encode_color(str(i.get("fillcolor", "#c0c0c0")))
+        edgecolor = _encode_color(str(i.get("edgecolor", "black")))
+        hatchcolor = _encode_color(str(i.get("hatchcolor", "#a0a0a0")))
+        title_color = _encode_color(str(timeline[name].get("title_color", "black")))
+        note_color = _encode_color(str(timeline[name].get("note_color", "black")))
+        linewidth = i.get("linewidth", 3.0)
+        linestyle = _encode_linestyle(i.get("linestyle", "solid"))
+
+        xmin = coords.get_date_coord(start)
+        xmax = coords.get_date_coord(end)
+        y = i.get("location", 0.5)
+        ax.axvline(
+            x=start,
+            ymin=0.0,
+            ymax=1.0,
+            color=edgecolor,
+            linewidth=linewidth,
+        )
+        ax.axvline(
+            x=end,
+            ymin=0.0,
+            ymax=1.0,
+            color=edgecolor,
+            linewidth=linewidth,
+        )
+        xcoords = [start, end, end, start, start]
+        ycoords = [1.0, 1.0, 0.0, 0.0, 1.0]
+        f = ax.fill(
+            xcoords,
+            ycoords,
+            hatch="////",
+            facecolor=fillcolor,
+            edgecolor=hatchcolor,
+        )
+
+        annotation_value = i.get("annotation", "")
+        if annotation_value.find("start") >= 0:
+            annotation_format = i.get("annotation_format", "%Y-%m-%d")
+            annotation_text = plt.text(
+                start,
+                y + coords.y_annotation_gap,
+                "⇤" + start.strftime(annotation_format),
+                fontsize=coords.annotation_fontsize,
+                color=i.get("annotation_color", "grey"),
+            )
+        if annotation_value.find("end") >= 0:
+            annotation_format = i.get("annotation_format", "%Y-%m-%d")
+            annotation_text = plt.text(
+                end,
+                y + coords.y_annotation_gap,
+                end.strftime(annotation_format) + "⇥",
+                fontsize=coords.annotation_fontsize,
+                horizontalalignment="right",
+                color=i.get("annotation_color", "grey"),
+            )
+
+        title = i.get("title")
+        title_text = plt.text(
+            start + 0.5 * (end - start),
+            y - 2 * coords.y_annotation_gap,
+            (title if title is not None else name).encode().decode("unicode_escape"),
+            fontsize=coords.band_title_fontsize,
+            verticalalignment="top",
+            horizontalalignment="center",
+            color=title_color,
+        )
+
+        r = fig.canvas.get_renderer()
+        bb = title_text.get_window_extent(renderer=r)
+        point = ax.transData.inverted().transform(
+            (min(bb.intervalx), min(bb.intervaly))
+        )
+        lower_left = point[1]
+
+        note = i.get("note")
+        if note is not None:
+            plt.text(
+                start + 0.5 * (end - start),
+                lower_left - coords.note_gap,
+                note.encode().decode("unicode_escape"),
+                verticalalignment="top",
+                color=note_color,
+                fontsize=coords.note_fontsize,
+                fontstyle="italic",
+                horizontalalignment="center",
+            )
+
+
 def render_lines(timeline, fig, coords, ax, verbose=False):
     vlines = _get_type(timeline, "vertical line")
     for name in vlines:
@@ -574,6 +723,7 @@ def generate(timeline, filename, args, parser):
     fig, ax = setup_plot(timeline, coords, top_name)
 
     render_intervals(timeline, fig, coords, ax, verbose=args.verbose)
+    render_bands(timeline, fig, coords, ax, verbose=args.verbose)
     render_events(timeline, fig, coords, ax, verbose=args.verbose)
     render_lines(timeline, fig, coords, ax, verbose=args.verbose)
     render_numbering(timeline, fig, coords, ax, verbose=args.verbose)
