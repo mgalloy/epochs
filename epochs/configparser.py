@@ -470,7 +470,7 @@ class EpochConfigParser:
 
         return value
 
-    def _write(self, fileobject: TextIO) -> None:
+    def _write(self, fileobject: TextIO, space_around_delimiters: bool = True) -> None:
         """Write the configuration to a file-like object
 
         Parameters
@@ -478,7 +478,7 @@ class EpochConfigParser:
         fileobject : TextIO
             file-like object to write to
         """
-        self.config.write(fileobject)
+        self.config.write(fileobject, space_around_delimiters)
 
     def write(self, file: FileType, space_around_delimiters: bool = True) -> None:
         """Write config file to a file-like object
@@ -492,9 +492,9 @@ class EpochConfigParser:
         """
         if isinstance(file, str):
             with open(file, "w") as f:
-                self._write(f, space_around_delimiters=space_around_delimiters)
+                self._write(f, space_around_delimiters)
         else:
-            self._write(file, space_around_delimiters=space_around_delimiters)
+            self._write(file, space_around_delimiters)
 
     def __repr__(self) -> str:
         """Representation of config file"""
