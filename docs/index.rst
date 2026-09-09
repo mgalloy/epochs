@@ -9,6 +9,7 @@ Welcome to epochs's documentation!
    installation
    usage
    spec
+   timeline
    modules
    contributing
    authors
