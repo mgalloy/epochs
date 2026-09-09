@@ -707,6 +707,18 @@ def render_lines(timeline, fig, coords, ax, verbose=False):
         color = _encode_color(str(v.get("color", "black")))
         ax.axvline(x=start, ymin=0.0, ymax=1.0, color=color, linewidth=1.0)
 
+        title = v.get("title")
+        if title is not None:
+            ax.text(
+                start,
+                0.02,
+                title,
+                rotation="vertical",
+                fontsize=coords.note_fontsize,
+                ha="right",
+                va="bottom",
+            )
+
 
 def generate(timeline, filename, args, parser):
     top_names = _get_type(timeline, "timeline")
