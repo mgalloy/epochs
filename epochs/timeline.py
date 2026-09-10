@@ -59,6 +59,20 @@ TIMEDELTA_UNITS = {
 }
 
 
+def _convert_duration(duration: str) -> datetime.timedelta:
+    """Convert the duration of an event from a string to a `datetime.timedelta`.
+    The duration must be a number followed by one more more spaces followed by
+    the unit. The accepted units are in `TIMEDELTA_UNITS` and may be plural or
+    not."""
+    tokens = duration.split()
+    number = int(tokens[0])
+    units = tokens[1]
+    if units[-1] == "s":
+        units = units[0:-1]
+    timedelta_units = TIMEDELTA_UNITS[units]
+    return number * timedelta_units
+
+
 def warn(msg):
     print(f"WARNING: {msg}")
 
@@ -73,7 +87,7 @@ def loads(s):
     return yaml.load(s, Loader=Loader)
 
 
-def _get_type(timeline, typename):
+def _get_type(timeline: dict, typename: str) -> list[dict]:
     return [item for item in timeline if timeline[item].get("type") == typename]
 
 
@@ -92,7 +106,7 @@ def _encode_color(color):
     return color
 
 
-def _encode_linestyle(linestyle):
+def _encode_linestyle(linestyle: str):
     return LINESTYLES[linestyle]
 
 
@@ -104,6 +118,75 @@ def _encode_boolean(value):
 
 class ParsingError(Exception):
     """Throw if there is any parsing error in the timeline specification."""
+
+
+def order_timeline(timeline: dict, verbose: bool = True) -> None:
+    # define "start" for relatively define items
+    start_name = {"interval": "start", "band": "start", "line": "date", "event": "date"}
+
+    # first find the items that have a defined start
+    defined_items = []
+    undefined_items = []
+    n_items_to_order = 0
+    for name in timeline:
+        type_name = timeline[name].get("type").lower()
+
+        # don't need to order numberings or values
+        if type_name not in ["interval", "band", "line", "event"]:
+            continue
+
+        n_items_to_order += 1
+        if timeline[name].get(start_name[type_name]) is None:
+            undefined_items.append(name)
+        else:
+            defined_items.append(name)
+
+    if len(undefined_items) > 0:
+        print("items to order: " + ", ".join(f'"{i}"' for i in undefined_items))
+
+    # extremely naive algorithm to define start for all undefined items
+    while len(defined_items) < n_items_to_order:
+        for name in undefined_items:
+            i = timeline[name]
+            type_name = i.get("type").lower()
+
+            start_after = i.get("start_after")
+            if start_after is not None:
+                if start_after not in timeline:
+                    raise ParsingError(f"unknown item '{start_after}'")
+                start_after_end = timeline[start_after].get("end")
+                if start_after_end is None:
+                    start_after_start = timeline[start_after].get("start")
+                    if start_after_start is None:
+                        continue
+                    start_after_duration = timeline[start_after].get("duration")
+                    start_after_end = dateutil.parser.parse(
+                        start_after_start
+                    ) + _convert_duration(start_after_duration)
+                i[start_name[type_name]] = (
+                    start_after_end
+                    if type(start_after_end) == str
+                    else start_after_end.strftime("%Y-%m-%d")
+                )
+                defined_items.append(name)
+            else:
+                print(f"undefined start for item {name}")
+
+    # define "end" for items with duration
+    for name in timeline:
+        i = timeline[name]
+        type_name = i.get("type").lower()
+
+        # don't need to order events, lines, numberings, or values
+        if type_name not in ["interval", "band"]:
+            continue
+
+        if i.get("end") is None:
+            duration = i.get("duration")
+            print(name, duration)
+            duration_timedelta = _convert_duration(duration)
+            start = dateutil.parser.parse(i.get(start_name[type_name]))
+            i["end"] = (start + duration_timedelta).strftime("%Y-%m-%d")
 
 
 class timeline_coords(object):
@@ -415,63 +498,8 @@ def render_events(timeline, fig, coords, ax, verbose=False):
         # print(f"{name}: {start_date} to {end_date}, at {x:0.3f}, {y} in {color}")
 
 
-def _calculation_duration(duration: str) -> datetime.timedelta:
-    tokens = duration.split()
-    number = int(tokens[0])
-    units = tokens[1]
-    if units[-1] == "s":
-        units = units[0:-1]
-    timedelta_units = TIMEDELTA_UNITS[units]
-    return number * timedelta_units
-
-
 def render_intervals(timeline, fig, coords, ax, verbose=False):
     intervals = _get_type(timeline, "interval")
-
-    # define "start" for relatively define intervals
-    defined_intervals = []
-    undefined_intervals = []
-    for name in intervals:
-        if timeline[name].get("start") is None:
-            undefined_intervals.append(name)
-        else:
-            defined_intervals.append(name)
-
-    # extremely naive algorithm to define start for all undefined intervals
-    while len(defined_intervals) < len(intervals):
-        for name in undefined_intervals:
-            i = timeline[name]
-            start_after = i.get("start_after")
-            if start_after is not None:
-                if start_after not in timeline:
-                    raise ParsingError(f"unknown interval '{start_after}'")
-                start_after_end = timeline[start_after].get("end")
-                if start_after_end is None:
-                    start_after_start = timeline[start_after].get("start")
-                    if start_after_start is None:
-                        continue
-                    start_after_duration = timeline[start_after].get("duration")
-                    start_after_end = dateutil.parser.parse(
-                        start_after_start
-                    ) + _calculation_duration(start_after_duration)
-                i["start"] = (
-                    start_after_end
-                    if type(start_after_end) == str
-                    else start_after_end.strftime("%Y-%m-%d")
-                )
-                defined_intervals.append(name)
-            else:
-                print(f"undefined start for interval {name}")
-
-    # define "end" for intervals with duration
-    for name in intervals:
-        i = timeline[name]
-        if i.get("end") is None:
-            duration = i.get("duration")
-            duration_timedelta = _calculation_duration(duration)
-            start = dateutil.parser.parse(i.get("start"))
-            i["end"] = (start + duration_timedelta).strftime("%Y-%m-%d")
-
     for name in intervals:
         i = timeline[name]
         start = dateutil.parser.parse(i.get("start"))
@@ -487,7 +515,6 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
         xmin = coords.get_date_coord(start)
         xmax = coords.get_date_coord(end)
         y = i.get("location", 0.5)
-        # print(f"{name}: {xmin} to {xmax} at y={y}")
         ax.axhline(
             y=y,
             xmin=xmin,
@@ -552,51 +579,6 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
 
 def render_bands(timeline, fig, coords, ax, verbose=False):
     bands = _get_type(timeline, "band")
-
-    # define "start" for relatively define bands
-    defined_bands = []
-    undefined_bands = []
-    for name in bands:
-        if timeline[name].get("start") is None:
-            undefined_bands.append(name)
-        else:
-            defined_bands.append(name)
-
-    # extremely naive algorithm to define start for all undefined bands
-    while len(defined_bands) < len(bands):
-        for name in undefined_bands:
-            i = timeline[name]
-            start_after = i.get("start_after")
-            if start_after is not None:
-                if start_after not in timeline:
-                    raise ParsingError(f"unknown band '{start_after}'")
-                start_after_end = timeline[start_after].get("end")
-                if start_after_end is None:
-                    start_after_start = timeline[start_after].get("start")
-                    if start_after_start is None:
-                        continue
-                    start_after_duration = timeline[start_after].get("duration")
-                    start_after_end = dateutil.parser.parse(
-                        start_after_start
-                    ) + _calculation_duration(start_after_duration)
-                i["start"] = (
-                    start_after_end
-                    if type(start_after_end) == str
-                    else start_after_end.strftime("%Y-%m-%d")
-                )
-                defined_bands.append(name)
-            else:
-                print(f"undefined start for band {name}")
-
-    # define "end" for bands with duration
-    for name in bands:
-        i = timeline[name]
-        if i.get("end") is None:
-            duration = i.get("duration")
-            duration_timedelta = _calculation_duration(duration)
-            start = dateutil.parser.parse(i.get("start"))
-            i["end"] = (start + duration_timedelta).strftime("%Y-%m-%d")
-
     for name in bands:
         i = timeline[name]
         start = dateutil.parser.parse(i.get("start"))
@@ -606,8 +588,8 @@ def render_bands(timeline, fig, coords, ax, verbose=False):
         fillcolor = _encode_color(str(i.get("fillcolor", "#c0c0c0")))
         edgecolor = _encode_color(str(i.get("edgecolor", "black")))
         hatchcolor = _encode_color(str(i.get("hatchcolor", "#a0a0a0")))
-        title_color = _encode_color(str(timeline[name].get("title_color", "black")))
-        note_color = _encode_color(str(timeline[name].get("note_color", "black")))
+        title_color = _encode_color(str(i.get("title_color", "black")))
+        note_color = _encode_color(str(i.get("note_color", "black")))
         linewidth = i.get("linewidth", 3.0)
         linestyle = _encode_linestyle(i.get("linestyle", "solid"))
 
@@ -766,6 +748,8 @@ def main():
 
     if not args.verbose:
         warnings.filterwarnings("ignore")
+
+    order_timeline(timeline)
 
     try:
         generate(timeline, output_filename, args, parser)
