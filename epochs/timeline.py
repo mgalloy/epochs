@@ -22,7 +22,7 @@ try:
 except ImportError:
     from yaml import Loader
 
-import epochs
+from . import __version__
 
 
 named_colors = matplotlib.colors.get_named_colors_mapping()
@@ -728,7 +728,7 @@ def generate(timeline, filename, args, parser):
 
 
 def main():
-    name = f"Timeline generator (epochs {epochs.__version__})"
+    name = f"Timeline generator (epochs {__version__})"
     parser = argparse.ArgumentParser(description=name)
     parser.add_argument("-v", "--version", action="version", version=name)
     parser.add_argument("filename", help="YAML input filename")
