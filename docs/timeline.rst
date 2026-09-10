@@ -19,10 +19,32 @@ There are other common fields with the same format for allowable values:
   [TODO]: specify format
 
 
+Timelines
+=========
+
+There can be only one "timeline" type item in a timeline. It defines the
+coordinate system for the other items to be place on.
+
+- ``start``
+- ``end``
+- ``width``
+- ``height``
+- ``top-margin``
+- ``right-margin``
+- ``bottom-margin``
+- ``left-margin``
+- ``axes``
+- ``time_tick_display_cadence``
+- ``title_fontsize``
+- ``note_fontsize``
+- ``tick-format``
+- ``ticks`` -- "hours", "days", "weeks", "months", or "years"
+
+
 Intervals
 =========
 
-The allowable fields of an interval are:
+The allowable fields of an interval (``type: interval``) are:
 
 - ``start`` -- start date of the interval, must have either ``start`` or
   ``start_after``
@@ -53,7 +75,7 @@ The allowable fields of an interval are:
 Bands
 =====
 
-Fields:
+Fields (``type: band``):
 
 - ``start``
 - ``start_after``
@@ -72,10 +94,11 @@ Fields:
 - ``title``
 - ``note``
 
+
 Lines
 =====
 
-Fields:
+vertical line fields (``type: line``):
 
 - ``date``
 - ``color``
@@ -85,7 +108,7 @@ Fields:
 Events
 ======
 
-Fields:
+Fields (``type: event``):
 
 - ``date``
 - ``end``
@@ -101,7 +124,7 @@ Fields:
 Numberings
 ==========
 
-Fields:
+Fields (``type: numbering``):
 
 - ``position``
 - ``interval``
@@ -112,6 +135,8 @@ Fields:
 
 Values
 ======
+
+(``type: value``)
 
 - ``interval``
 - ``value``
