@@ -118,7 +118,9 @@ def _encode_color(color: str) -> str:
     return color
 
 
-def _encode_linestyle(linestyle: str):
+def _encode_linestyle(linestyle: str) -> str | tuple:
+    """Convert a named linestyle to a valid matplotlib specification for a
+    linestyle."""
     return LINESTYLES[linestyle]
 
 
@@ -133,7 +135,8 @@ class ParsingError(Exception):
 
 
 def order_timeline(timeline: dict, verbose: bool = True) -> None:
-    # define "start" for relatively define items
+    """Define start/end date/times for relatively defined intervals, bands,
+    lines, and events."""
     start_name = {"interval": "start", "band": "start", "line": "date", "event": "date"}
 
     # first find the items that have a defined start
@@ -202,6 +205,10 @@ def order_timeline(timeline: dict, verbose: bool = True) -> None:
 
 
 class timeline_coords(object):
+    """Class representing the coordinate system of a timeline, invcluding the
+    sizes of fonts of various items, the dimensions of the timeline graphic,
+    gaps between items, etc.."""
+
     annotation_fontsize = 5  # pts
     ticklabel_fontsize = 7  # pts
     line_height = 1.5
@@ -231,11 +238,15 @@ class timeline_coords(object):
             0.25 * self.line_height * self.note_fontsize / (self.height * 72)
         )
 
-    def get_date_coord(self, date):
+    def get_date_coord(self, date: datetime.datetime):
+        """Converts a datetime into an x-coordinate of the timeline."""
         return (date - self.start_date) / (self.end_date - self.start_date)
 
 
-def get_locator(timeline, top_name, ticks):
+def get_locator(timeline: dict, top_name: str, ticks: str) -> tuple:
+    """Get the tick format, major locator, and minor locator for the x-axis of
+    the timeline, given the timeline specification and the name of the how the
+    ticks should be given: "hours", "days", "weeks", "months", or "years"."""
     if ticks == "days":
         tick_format = timeline[top_name].get("tick-format", "%d %b %y")
         major_locator = mdates.DayLocator(interval=1)
@@ -264,7 +275,8 @@ def get_locator(timeline, top_name, ticks):
     return tick_format, major_locator, minor_locator
 
 
-def setup_plot(timeline, coords, top_name):
+def setup_plot(timeline: dict, coords: timeline_coords, top_name: str) -> tuple:
+    """Get the figure and axes of a matplotlib plot for the given timeline."""
     fig, ax = plt.subplots(figsize=(coords.width, coords.height))
 
     axes_name = timeline[top_name].get("axes", "").lower()
@@ -740,6 +752,8 @@ def generate(timeline, filename, args, parser):
 
 
 def main():
+    """Define arguments, parse them, read the YAML specification of the timline,
+    and generate the PDF."""
     name = f"Timeline generator (epochs {__version__})"
     parser = argparse.ArgumentParser(description=name)
     parser.add_argument("-v", "--version", action="version", version=name)
