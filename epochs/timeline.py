@@ -752,8 +752,8 @@ def generate(timeline, filename, args, parser):
 
 
 def main():
-    """Define arguments, parse them, read the YAML specification of the timline,
-    and generate the PDF."""
+    """Entry point for timeline CLI defined for project. Define arguments, parse
+    them, read the YAML specification of the timline, and generate the PDF."""
     name = f"Timeline generator (epochs {__version__})"
     parser = argparse.ArgumentParser(description=name)
     parser.add_argument("-v", "--version", action="version", version=name)
