@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-"""Module defining timeline generator.
+"""Module defining timeline generator, a command-line utility to convert a
+yaml specification into a PDF timeline.
 """
 
 import argparse
@@ -73,29 +74,40 @@ def _convert_duration(duration: str) -> datetime.timedelta:
     return number * timedelta_units
 
 
-def warn(msg):
+def warn(msg: str):
+    """Print a warning message to stdout."""
     print(f"WARNING: {msg}")
 
 
-def load(filename):
+def load(filename: str):
+    """Load a YAML specification given a filename, returning a combination of
+    dicts and lists."""
     with open(filename, "r") as f:
         y = yaml.load(f, Loader=Loader)
     return y
 
 
-def loads(s):
+def loads(s: str):
+    """Load a YAML specification as a string , returning a combination of dicts
+    and lists."""
     return yaml.load(s, Loader=Loader)
 
 
 def _get_type(timeline: dict, typename: str) -> list[dict]:
+    """Get all the items of a particular type in the timeline."""
     return [item for item in timeline if timeline[item].get("type") == typename]
 
 
-def _valid_hexcolor(color):
+def _valid_hexcolor(color: str) -> bool:
+    """Returns whether the given color is a valid color specified using hex,
+    such as "#a0cfd8"."""
     return bool(hex_color_re.match(color))
 
 
-def _encode_color(color):
+def _encode_color(color: str) -> str:
+    """If it is not already a valid hex color specification for a color, get the
+    hex color specification for a color given a color name recognized by
+    matplotlib."""
     if color in named_colors:
         color = named_colors[color]
     elif not _valid_hexcolor(color):
