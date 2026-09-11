@@ -15,7 +15,6 @@ import dateutil.parser
 import matplotlib
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
-import numpy as np
 import yaml
 
 try:
@@ -35,11 +34,9 @@ LINESTYLES = {
     "dashed": "dashed",
     "dashdot": "dashdot",
     "loosely dotted": (0, (1, 10)),
-    "dotted": (0, (1, 1)),
     "densely dotted": (0, (1, 1)),
     "long dash with offset": (5, (10, 3)),
     "loosely dashed": (0, (5, 10)),
-    "dashed": (0, (5, 5)),
     "densely dashed": (0, (5, 1)),
     "loosely dashdotted": (0, (3, 10, 1, 10)),
     "dashdotted": (0, (3, 5, 1, 5)),
@@ -204,7 +201,7 @@ def order_timeline(timeline: dict, verbose: bool = True) -> None:
             i["end"] = (start + duration_timedelta).strftime("%Y-%m-%d")
 
 
-class timeline_coords(object):
+class TimelineCoords(object):
     """Class representing the coordinate system of a timeline, invcluding the
     sizes of fonts of various items, the dimensions of the timeline graphic,
     gaps between items, etc.."""
@@ -275,7 +272,7 @@ def get_locator(timeline: dict, top_name: str, ticks: str) -> tuple:
     return tick_format, major_locator, minor_locator
 
 
-def setup_plot(timeline: dict, coords: timeline_coords, top_name: str) -> tuple:
+def setup_plot(timeline: dict, coords: TimelineCoords, top_name: str) -> tuple:
     """Get the figure and axes of a matplotlib plot for the given timeline."""
     fig, ax = plt.subplots(figsize=(coords.width, coords.height))
 
@@ -358,6 +355,7 @@ def setup_plot(timeline: dict, coords: timeline_coords, top_name: str) -> tuple:
 
 
 def render_values(timeline, fig, coords, ax, verbose=False):
+    """Render the value type items in the timeline."""
     values = _get_type(timeline, "value")
     for name in values:
         if verbose:
@@ -396,6 +394,7 @@ def render_values(timeline, fig, coords, ax, verbose=False):
 
 
 def render_numbering(timeline, fig, coords, ax, verbose=False):
+    """Render the numbering type items in the timeline."""
     numberings = _get_type(timeline, "numbering")
     for name in numberings:
         if verbose:
@@ -455,6 +454,7 @@ def render_numbering(timeline, fig, coords, ax, verbose=False):
 
 
 def render_events(timeline, fig, coords, ax, verbose=False):
+    """Render the event type items in the timeline."""
     events = _get_type(timeline, "event")
     for name in events:
         if verbose:
@@ -523,6 +523,7 @@ def render_events(timeline, fig, coords, ax, verbose=False):
 
 
 def render_intervals(timeline, fig, coords, ax, verbose=False):
+    """Render the interval type items in the timeline."""
     intervals = _get_type(timeline, "interval")
     for name in intervals:
         i = timeline[name]
@@ -602,6 +603,7 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
 
 
 def render_bands(timeline, fig, coords, ax, verbose=False):
+    """Render the band type items in the timeline."""
     bands = _get_type(timeline, "band")
     for name in bands:
         i = timeline[name]
@@ -698,6 +700,7 @@ def render_bands(timeline, fig, coords, ax, verbose=False):
 
 
 def render_lines(timeline, fig, coords, ax, verbose=False):
+    """Render the vertical line type items in the timeline."""
     vlines = _get_type(timeline, "vertical line")
     for name in vlines:
         if verbose:
@@ -726,7 +729,8 @@ def render_lines(timeline, fig, coords, ax, verbose=False):
             )
 
 
-def generate(timeline, filename, args, parser):
+def generate(timeline, filename: str, args, parser) -> None:
+    """Generate the PDF of the timeline."""
     top_names = _get_type(timeline, "timeline")
 
     # check to make sure top_name is unique
@@ -736,7 +740,7 @@ def generate(timeline, filename, args, parser):
         parser.error("Top-level timeline not unique")
     top_name = top_names[0]
 
-    coords = timeline_coords(timeline, top_name)
+    coords = TimelineCoords(timeline, top_name)
 
     fig, ax = setup_plot(timeline, coords, top_name)
 
