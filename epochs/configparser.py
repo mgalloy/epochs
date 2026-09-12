@@ -22,7 +22,7 @@ OptionValue = TypeVar(
     "OptionValue", bool, float, int, str, List[bool], List[float], List[int], List[str]
 )
 DateValue = TypeVar("DateValue", str, datetime.datetime)
-FileType = TypeVar("FileType", str, TextIO)
+FileType = TypeVar("FileType", str, TextIO)  # pylint: disable=invalid-name
 
 OptionSpec = collections.namedtuple("OptionSpec", "required type default list")
 OptionSpec.__doc__ = """Specification for an option"""
@@ -103,8 +103,8 @@ def _str2type(s: str) -> OptionValue:
     """
     if s.lower() in set(TYPES):
         return TYPES[s.lower()]
-    else:
-        raise ValueError(f"invalid type: {s}")
+
+    raise ValueError(f"invalid type: {s}")
 
 
 def _convert(value: str, type_value: type, is_list: bool = False) -> OptionValue:
@@ -125,18 +125,19 @@ def _convert(value: str, type_value: type, is_list: bool = False) -> OptionValue
     """
     if is_list:
         return [_convert(v, type_value, False) for v in _parse_list(value) if v != ""]
-    else:
-        if type(value) == type_value:
-            return value
-        if type_value == bool:
-            if value.lower() in {"yes", "true", "1"}:
-                return True
-            elif value.lower() in {"no", "false", "0"}:
-                return False
-            else:
-                raise ValueError(f'invalid value "{value}" for bool type')
-        else:
-            return type_value(value)
+
+    if isinstance(value, type_value):
+        return value
+
+    if type_value == bool:
+        if value.lower() in {"yes", "true", "1"}:
+            return True
+        if value.lower() in {"no", "false", "0"}:
+            return False
+
+        raise ValueError(f'invalid value "{value}" for bool type')
+
+    return type_value(value)
 
 
 def _parse_specline(specline: str) -> OptionSpec:
@@ -294,7 +295,7 @@ class ConfigParser(configparser.ConfigParser):
             parent_section, parent_option = self.parent_option.split("/")
             if self.has_option(parent_section, parent_option):
                 parent_name = self.get(parent_section, parent_option)
-                if type(filenames) == str:
+                if isinstance(filenames, str):
                     filenames = [filenames]
                 for f in filenames:
                     parent_path = os.path.join(os.path.dirname(f), parent_name)
@@ -305,7 +306,7 @@ class ConfigParser(configparser.ConfigParser):
 
         return read_ok
 
-    def write(self, file: FileType, space_around_delimiters: bool = True) -> None:
+    def write(self, fp: FileType, space_around_delimiters: bool = True) -> None:
         """Write config file to a file-like object
 
         Parameters
@@ -315,11 +316,11 @@ class ConfigParser(configparser.ConfigParser):
         space_around_delimiters : bool
             whether to put spaces around the delimiter, i.e., ":" or "="
         """
-        if isinstance(file, str):
-            with open(file, "w") as f:
+        if isinstance(fp, str):
+            with open(fp, "w", encoding="utf-8") as f:
                 self._write(f)
         else:
-            self._write(file)
+            self._write(fp)
 
     def __repr__(self) -> str:
         """Representation of config file"""
@@ -385,6 +386,8 @@ class EpochConfigParser:
 
     @property
     def date(self):
+        """Access the default date that options will be retrieved at if a date
+        is not specified.."""
         return self._date
 
     @date.setter
@@ -400,20 +403,20 @@ class EpochConfigParser:
     def _parse_datetime(self, d: DateValue) -> datetime.datetime:
         if isinstance(d, datetime.datetime):
             return d
-        else:
-            if self._formats is None:
-                return dateutil.parser.parse(d)
-            else:
-                for f in self._formats:
-                    try:
-                        dt = datetime.datetime.strptime(d, f)
-                        return dt
-                    except ValueError:
-                        pass
 
+        if self._formats is None:
+            return dateutil.parser.parse(d)
+
+        for f in self._formats:
+            try:
+                dt = datetime.datetime.strptime(d, f)
+                return dt
+            except ValueError:
+                return None
 
     @property
     def formats(self):
+        """Access the list of formats that a date might be specified in."""
         return self._formats
 
     @formats.setter
@@ -491,7 +494,7 @@ class EpochConfigParser:
             whether to put spaces around the delimiter, i.e., ":" or "="
         """
         if isinstance(file, str):
-            with open(file, "w") as f:
+            with open(file, "w", encoding="utf-8") as f:
                 self._write(f, space_around_delimiters)
         else:
             self._write(file, space_around_delimiters)
