@@ -57,23 +57,8 @@ TIMEDELTA_UNITS = {
 }
 
 
-def _convert_duration(duration: str) -> datetime.timedelta:
-    """Convert the duration of an event from a string to a `datetime.timedelta`.
-    The duration must be a number followed by one more more spaces followed by
-    the unit. The accepted units are in `TIMEDELTA_UNITS` and may be plural or
-    not."""
-    tokens = duration.split()
-    number = int(tokens[0])
-    units = tokens[1]
-    if units[-1] == "s":
-        units = units[0:-1]
-    timedelta_units = TIMEDELTA_UNITS[units]
-    return number * timedelta_units
-
-
-def warn(msg: str):
-    """Print a warning message to stdout."""
-    print(f"WARNING: {msg}")
+class ParsingError(Exception):
+    """Throw if there is any parsing error in the timeline specification."""
 
 
 def load(filename: str):
@@ -88,6 +73,25 @@ def loads(s: str):
     """Load a YAML specification as a string , returning a combination of dicts
     and lists."""
     return yaml.load(s, Loader=Loader)
+
+
+def warn(msg: str):
+    """Print a warning message to stdout."""
+    print(f"WARNING: {msg}")
+
+
+def _convert_duration(duration: str) -> datetime.timedelta:
+    """Convert the duration of an event from a string to a `datetime.timedelta`.
+    The duration must be a number followed by one more more spaces followed by
+    the unit. The accepted units are in `TIMEDELTA_UNITS` and may be plural or
+    not."""
+    tokens = duration.split()
+    number = int(tokens[0])
+    units = tokens[1]
+    if units[-1] == "s":
+        units = units[0:-1]
+    timedelta_units = TIMEDELTA_UNITS[units]
+    return number * timedelta_units
 
 
 def _get_type(timeline: dict, typename: str) -> list[dict]:
@@ -127,8 +131,43 @@ def _encode_boolean(value):
     return value.lower() in ["yes", "true"]
 
 
-class ParsingError(Exception):
-    """Throw if there is any parsing error in the timeline specification."""
+class TimelineCoords:
+    """Class representing the coordinate system of a timeline, invcluding the
+    sizes of fonts of various items, the dimensions of the timeline graphic,
+    gaps between items, etc.."""
+
+    annotation_fontsize = 5  # pts
+    ticklabel_fontsize = 7  # pts
+    line_height = 1.5
+    ax = None
+    top_ax = None
+
+    def __init__(self, timeline, top_name):
+        self.start_date = dateutil.parser.parse(timeline[top_name]["start"])
+        self.end_date = dateutil.parser.parse(timeline[top_name]["end"])
+
+        self.width = timeline[top_name].get("width", 8.0)
+        self.height = timeline[top_name].get("height", 8.0)
+
+        self.interval_title_fontsize = timeline[top_name].get("title_fontsize", 8)
+        self.note_fontsize = timeline[top_name].get("note_fontsize", 6)  # pts
+
+        self.band_title_fontsize = timeline[top_name].get("title_fontsize", 8)
+
+        self.time_tick_display_cadence = timeline[top_name].get(
+            "time_tick_display_cadence", 1
+        )
+
+        self.y_annotation_gap = (
+            0.25 * self.line_height * self.interval_title_fontsize / (self.height * 72)
+        )  # 72 pts/inch
+        self.note_gap = (
+            0.25 * self.line_height * self.note_fontsize / (self.height * 72)
+        )
+
+    def get_date_coord(self, date: datetime.datetime):
+        """Converts a datetime into an x-coordinate of the timeline."""
+        return (date - self.start_date) / (self.end_date - self.start_date)
 
 
 def order_timeline(timeline: dict, verbose: bool = True) -> None:
@@ -200,45 +239,6 @@ def order_timeline(timeline: dict, verbose: bool = True) -> None:
             duration_timedelta = _convert_duration(duration)
             start = dateutil.parser.parse(i.get(start_name[type_name]))
             i["end"] = (start + duration_timedelta).strftime("%Y-%m-%d")
-
-
-class TimelineCoords:
-    """Class representing the coordinate system of a timeline, invcluding the
-    sizes of fonts of various items, the dimensions of the timeline graphic,
-    gaps between items, etc.."""
-
-    annotation_fontsize = 5  # pts
-    ticklabel_fontsize = 7  # pts
-    line_height = 1.5
-    ax = None
-    top_ax = None
-
-    def __init__(self, timeline, top_name):
-        self.start_date = dateutil.parser.parse(timeline[top_name]["start"])
-        self.end_date = dateutil.parser.parse(timeline[top_name]["end"])
-
-        self.width = timeline[top_name].get("width", 8.0)
-        self.height = timeline[top_name].get("height", 8.0)
-
-        self.interval_title_fontsize = timeline[top_name].get("title_fontsize", 8)
-        self.note_fontsize = timeline[top_name].get("note_fontsize", 6)  # pts
-
-        self.band_title_fontsize = timeline[top_name].get("title_fontsize", 8)
-
-        self.time_tick_display_cadence = timeline[top_name].get(
-            "time_tick_display_cadence", 1
-        )
-
-        self.y_annotation_gap = (
-            0.25 * self.line_height * self.interval_title_fontsize / (self.height * 72)
-        )  # 72 pts/inch
-        self.note_gap = (
-            0.25 * self.line_height * self.note_fontsize / (self.height * 72)
-        )
-
-    def get_date_coord(self, date: datetime.datetime):
-        """Converts a datetime into an x-coordinate of the timeline."""
-        return (date - self.start_date) / (self.end_date - self.start_date)
 
 
 def get_locator(timeline: dict, top_name: str, ticks: str) -> tuple:
@@ -355,45 +355,6 @@ def setup_plot(timeline: dict, coords: TimelineCoords, top_name: str) -> tuple:
     return fig, ax
 
 
-def render_values(timeline, fig, coords, ax, verbose=False):
-    """Render the value type items in the timeline."""
-    values = _get_type(timeline, "value")
-    for name in values:
-        if verbose:
-            print(f"value: {name}")
-
-        v = timeline[name]
-        interval = v["interval"]
-        interval_values = v["value"].split()
-        yloc = v["location"]
-        rotation = v["rotation"] if "rotation" in v else "horizontal"
-        fontsize = v["fontsize"] if "fontsize" in v else 4
-
-        axis = coords.ax
-
-        top_name = _get_type(timeline, "timeline")[0]
-        _, major_locator, _ = get_locator(timeline, top_name, interval)
-        vmin, vmax = axis.get_xlim()
-        tick_locations = major_locator.tick_values(
-            mdates.num2date(vmin), mdates.num2date(vmax)
-        )
-        xlocs = 0.5 * (tick_locations[1:] + tick_locations[0:-1])
-        start_week = v["start_week"] if "start_week" in v else 1
-        tick_locations = tick_locations[start_week - 1 :]
-        xlocs = xlocs[start_week - 1 :]
-        for x, interval_value in zip(xlocs, interval_values):
-            plt.text(
-                x,
-                yloc,
-                f"{interval_value}",
-                ha="center",
-                va="bottom",
-                rotation=rotation,
-                fontsize=fontsize,
-                color="#606060",
-            )
-
-
 def render_numbering(timeline, fig, coords, ax, verbose=False):
     """Render the numbering type items in the timeline."""
     numberings = _get_type(timeline, "numbering")
@@ -448,6 +409,85 @@ def render_numbering(timeline, fig, coords, ax, verbose=False):
                 value = int(d.strftime("%W"))
             plt.text(x, yloc, f"{value}", ha=ha, va=va, fontsize=fontsize, color=color)
             value += 1
+
+
+def render_values(timeline, fig, coords, ax, verbose=False):
+    """Render the value type items in the timeline."""
+    values = _get_type(timeline, "value")
+    for name in values:
+        if verbose:
+            print(f"value: {name}")
+
+        v = timeline[name]
+        interval = v["interval"]
+        interval_values = v["value"].split()
+        yloc = v["location"]
+        rotation = v["rotation"] if "rotation" in v else "horizontal"
+        fontsize = v["fontsize"] if "fontsize" in v else 4
+
+        axis = coords.ax
+
+        top_name = _get_type(timeline, "timeline")[0]
+        _, major_locator, _ = get_locator(timeline, top_name, interval)
+        vmin, vmax = axis.get_xlim()
+        tick_locations = major_locator.tick_values(
+            mdates.num2date(vmin), mdates.num2date(vmax)
+        )
+        xlocs = 0.5 * (tick_locations[1:] + tick_locations[0:-1])
+        start_week = v["start_week"] if "start_week" in v else 1
+        tick_locations = tick_locations[start_week - 1 :]
+        xlocs = xlocs[start_week - 1 :]
+        for x, interval_value in zip(xlocs, interval_values):
+            plt.text(
+                x,
+                yloc,
+                f"{interval_value}",
+                ha="center",
+                va="bottom",
+                rotation=rotation,
+                fontsize=fontsize,
+                color="#606060",
+            )
+
+
+def render_lines(timeline, fig, coords, ax, verbose=False):
+    """Render the vertical line type items in the timeline."""
+    vlines = _get_type(timeline, "vertical line")
+    for name in vlines:
+        if verbose:
+            print(f"vertical line: {name}")
+        v = timeline[name]
+
+        start_name = v.get("date")
+        if start_name == "now":
+            start = datetime.datetime.now()
+        else:
+            start = dateutil.parser.parse(start_name)
+
+        color = _encode_color(str(v.get("color", "black")))
+        linewidth = float(v.get("linewidth", 1.0))
+        linestyle = _encode_linestyle(v.get("linestyle", "solid"))
+
+        ax.axvline(
+            x=start,
+            ymin=0.0,
+            ymax=1.0,
+            color=color,
+            linewidth=linewidth,
+            linestyle=linestyle,
+        )
+
+        title = v.get("title")
+        if title is not None:
+            ax.text(
+                start,
+                0.02,
+                title,
+                rotation="vertical",
+                fontsize=coords.note_fontsize,
+                ha="right",
+                va="bottom",
+            )
 
 
 def render_events(timeline, fig, coords, ax, verbose=False):
@@ -695,46 +735,6 @@ def render_bands(timeline, fig, coords, ax, verbose=False):
                 fontsize=coords.note_fontsize,
                 fontstyle="italic",
                 horizontalalignment="center",
-            )
-
-
-def render_lines(timeline, fig, coords, ax, verbose=False):
-    """Render the vertical line type items in the timeline."""
-    vlines = _get_type(timeline, "vertical line")
-    for name in vlines:
-        if verbose:
-            print(f"vertical line: {name}")
-        v = timeline[name]
-
-        start_name = v.get("date")
-        if start_name == "now":
-            start = datetime.datetime.now()
-        else:
-            start = dateutil.parser.parse(start_name)
-
-        color = _encode_color(str(v.get("color", "black")))
-        linewidth = float(v.get("linewidth", 1.0))
-        linestyle = _encode_linestyle(v.get("linestyle", "solid"))
-
-        ax.axvline(
-            x=start,
-            ymin=0.0,
-            ymax=1.0,
-            color=color,
-            linewidth=linewidth,
-            linestyle=linestyle,
-        )
-
-        title = v.get("title")
-        if title is not None:
-            ax.text(
-                start,
-                0.02,
-                title,
-                rotation="vertical",
-                fontsize=coords.note_fontsize,
-                ha="right",
-                va="bottom",
             )
 
 
