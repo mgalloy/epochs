@@ -79,7 +79,7 @@ def warn(msg: str):
 def load(filename: str):
     """Load a YAML specification given a filename, returning a combination of
     dicts and lists."""
-    with open(filename, "r") as f:
+    with open(filename, "r", encoding="utf-8") as f:
         y = yaml.load(f, Loader=Loader)
     return y
 
@@ -153,7 +153,7 @@ def order_timeline(timeline: dict, verbose: bool = True) -> None:
         else:
             defined_items.append(name)
 
-    if len(undefined_items) > 0:
+    if len(undefined_items) > 0 and verbose:
         print("items to order: " + ", ".join(f'"{i}"' for i in undefined_items))
 
     # extremely naive algorithm to define start for all undefined items
@@ -177,12 +177,12 @@ def order_timeline(timeline: dict, verbose: bool = True) -> None:
                     ) + _convert_duration(start_after_duration)
                 i[start_name[type_name]] = (
                     start_after_end
-                    if type(start_after_end) == str
+                    if isinstance(start_after_end, str)
                     else start_after_end.strftime("%Y-%m-%d")
                 )
                 defined_items.append(name)
             else:
-                print(f"undefined start for item {name}")
+                warn(f"undefined start for item {name}")
 
     # define "end" for items with duration
     for name in timeline:
@@ -195,13 +195,14 @@ def order_timeline(timeline: dict, verbose: bool = True) -> None:
 
         if i.get("end") is None:
             duration = i.get("duration")
-            print(name, duration)
+            if verbose:
+                print(name, duration)
             duration_timedelta = _convert_duration(duration)
             start = dateutil.parser.parse(i.get(start_name[type_name]))
             i["end"] = (start + duration_timedelta).strftime("%Y-%m-%d")
 
 
-class TimelineCoords(object):
+class TimelineCoords:
     """Class representing the coordinate system of a timeline, invcluding the
     sizes of fonts of various items, the dimensions of the timeline graphic,
     gaps between items, etc.."""
@@ -371,7 +372,7 @@ def render_values(timeline, fig, coords, ax, verbose=False):
         axis = coords.ax
 
         top_name = _get_type(timeline, "timeline")[0]
-        format, major_locator, minor_locator = get_locator(timeline, top_name, interval)
+        _, major_locator, _ = get_locator(timeline, top_name, interval)
         vmin, vmax = axis.get_xlim()
         tick_locations = major_locator.tick_values(
             mdates.num2date(vmin), mdates.num2date(vmax)
@@ -380,7 +381,7 @@ def render_values(timeline, fig, coords, ax, verbose=False):
         start_week = v["start_week"] if "start_week" in v else 1
         tick_locations = tick_locations[start_week - 1 :]
         xlocs = xlocs[start_week - 1 :]
-        for t, x, interval_value in zip(tick_locations, xlocs, interval_values):
+        for x, interval_value in zip(xlocs, interval_values):
             plt.text(
                 x,
                 yloc,
@@ -419,18 +420,16 @@ def render_numbering(timeline, fig, coords, ax, verbose=False):
 
         interval = n["interval"] if "interval" in n else "days"
         fontsize = n["fontsize"] if "fontsize" in n else 5
+        color = n["color"] if "color" in n else "#606060"
 
         # TODO: need to find a better way to specify these locations using the
         # value of interval
         top_name = _get_type(timeline, "timeline")[0]
-        format, major_locator, minor_locator = get_locator(timeline, top_name, interval)
+        _, major_locator, _ = get_locator(timeline, top_name, interval)
         vmin, vmax = axis.get_xlim()
         tick_locations = major_locator.tick_values(
             mdates.num2date(vmin), mdates.num2date(vmax)
         )
-
-        # tick_locations = axis.get_xaxis().get_minor_locator()()
-        # tick_locations = axis.get_xaxis().get_major_locator()()
 
         ha = n["alignment"] if "alignment" in n else "center"
         if ha == "center":
@@ -447,9 +446,7 @@ def render_numbering(timeline, fig, coords, ax, verbose=False):
             if interval == "weeks" and "initial_value" not in n:
                 d = matplotlib.dates.num2date(t)
                 value = int(d.strftime("%W"))
-            plt.text(
-                x, yloc, f"{value}", ha=ha, va=va, fontsize=fontsize, color="#606060"
-            )
+            plt.text(x, yloc, f"{value}", ha=ha, va=va, fontsize=fontsize, color=color)
             value += 1
 
 
@@ -472,6 +469,7 @@ def render_events(timeline, fig, coords, ax, verbose=False):
         color = _encode_color(str(timeline[name].get("color", "black")))
         title_color = _encode_color(str(timeline[name].get("title_color", "black")))
         note_color = _encode_color(str(timeline[name].get("note_color", "black")))
+        linewidth = float(timeline[name].get("linewidth", 6.0))
         x = coords.get_date_coord(start_date)
         y = float(timeline[name].get("location", 0.90))
         wrap = timeline[name].get("wrap", None)
@@ -481,7 +479,7 @@ def render_events(timeline, fig, coords, ax, verbose=False):
                 xmin=x,
                 xmax=coords.get_date_coord(end_date),
                 color=color,
-                linewidth=6.0,
+                linewidth=linewidth,
             )
         ax.axvline(x=start_date, ymin=y, ymax=1.0, color=color, linewidth=0.5)
         title = timeline[name].get("title")
@@ -509,7 +507,7 @@ def render_events(timeline, fig, coords, ax, verbose=False):
                     textwrap.wrap(note_text, wrap, replace_whitespace=False)
                 )
 
-            p = plt.text(
+            plt.text(
                 start_date,
                 lower_left - coords.note_gap,
                 note_text,
@@ -519,7 +517,6 @@ def render_events(timeline, fig, coords, ax, verbose=False):
                 fontstyle="italic",
                 horizontalalignment="left",
             )
-        # print(f"{name}: {start_date} to {end_date}, at {x:0.3f}, {y} in {color}")
 
 
 def render_intervals(timeline, fig, coords, ax, verbose=False):
@@ -534,7 +531,7 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
         color = _encode_color(str(i.get("color", "black")))
         title_color = _encode_color(str(timeline[name].get("title_color", "black")))
         note_color = _encode_color(str(timeline[name].get("note_color", "black")))
-        linewidth = i.get("linewidth", 3.0)
+        linewidth = float(i.get("linewidth", 3.0))
         linestyle = _encode_linestyle(i.get("linestyle", "solid"))
 
         xmin = coords.get_date_coord(start)
@@ -552,7 +549,7 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
         annotation_value = i.get("annotation", "")
         if annotation_value.find("start") >= 0:
             annotation_format = i.get("annotation_format", "%Y-%m-%d")
-            annotation_text = plt.text(
+            plt.text(
                 start,
                 y + coords.y_annotation_gap,
                 "⇤" + start.strftime(annotation_format),
@@ -561,7 +558,7 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
             )
         if annotation_value.find("end") >= 0:
             annotation_format = i.get("annotation_format", "%Y-%m-%d")
-            annotation_text = plt.text(
+            plt.text(
                 end,
                 y + coords.y_annotation_gap,
                 end.strftime(annotation_format) + "⇥",
@@ -616,7 +613,7 @@ def render_bands(timeline, fig, coords, ax, verbose=False):
         hatchcolor = _encode_color(str(i.get("hatchcolor", "#a0a0a0")))
         title_color = _encode_color(str(i.get("title_color", "black")))
         note_color = _encode_color(str(i.get("note_color", "black")))
-        linewidth = i.get("linewidth", 3.0)
+        linewidth = float(i.get("linewidth", 3.0))
         linestyle = _encode_linestyle(i.get("linestyle", "solid"))
 
         xmin = coords.get_date_coord(start)
@@ -628,6 +625,7 @@ def render_bands(timeline, fig, coords, ax, verbose=False):
             ymax=1.0,
             color=edgecolor,
             linewidth=linewidth,
+            linestyle=linestyle,
         )
         ax.axvline(
             x=end,
@@ -635,10 +633,11 @@ def render_bands(timeline, fig, coords, ax, verbose=False):
             ymax=1.0,
             color=edgecolor,
             linewidth=linewidth,
+            linestyle=linestyle,
         )
         xcoords = [start, end, end, start, start]
         ycoords = [1.0, 1.0, 0.0, 0.0, 1.0]
-        f = ax.fill(
+        ax.fill(
             xcoords,
             ycoords,
             hatch="////",
@@ -649,7 +648,7 @@ def render_bands(timeline, fig, coords, ax, verbose=False):
         annotation_value = i.get("annotation", "")
         if annotation_value.find("start") >= 0:
             annotation_format = i.get("annotation_format", "%Y-%m-%d")
-            annotation_text = plt.text(
+            plt.text(
                 start,
                 y + coords.y_annotation_gap,
                 "⇤" + start.strftime(annotation_format),
@@ -704,7 +703,7 @@ def render_lines(timeline, fig, coords, ax, verbose=False):
     vlines = _get_type(timeline, "vertical line")
     for name in vlines:
         if verbose:
-            print(f"line: {name}")
+            print(f"vertical line: {name}")
         v = timeline[name]
 
         start_name = v.get("date")
@@ -714,7 +713,17 @@ def render_lines(timeline, fig, coords, ax, verbose=False):
             start = dateutil.parser.parse(start_name)
 
         color = _encode_color(str(v.get("color", "black")))
-        ax.axvline(x=start, ymin=0.0, ymax=1.0, color=color, linewidth=1.0)
+        linewidth = float(v.get("linewidth", 1.0))
+        linestyle = _encode_linestyle(v.get("linestyle", "solid"))
+
+        ax.axvline(
+            x=start,
+            ymin=0.0,
+            ymax=1.0,
+            color=color,
+            linewidth=linewidth,
+            linestyle=linestyle,
+        )
 
         title = v.get("title")
         if title is not None:
@@ -779,7 +788,7 @@ def main():
     if not args.verbose:
         warnings.filterwarnings("ignore")
 
-    order_timeline(timeline)
+    order_timeline(timeline, verbose=args.verbose)
 
     try:
         generate(timeline, output_filename, args, parser)
