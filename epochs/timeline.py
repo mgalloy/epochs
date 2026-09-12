@@ -134,7 +134,7 @@ def _encode_boolean(value):
 class TimelineCoords:
     """Class representing the coordinate system of a timeline, invcluding the
     sizes of fonts of various items, the dimensions of the timeline graphic,
-    gaps between items, etc.."""
+    gaps between items, etc."""
 
     annotation_fontsize = 5  # pts
     ticklabel_fontsize = 7  # pts
@@ -142,32 +142,37 @@ class TimelineCoords:
     ax = None
     top_ax = None
 
-    def __init__(self, timeline, top_name):
-        self.start_date = dateutil.parser.parse(timeline[top_name]["start"])
-        self.end_date = dateutil.parser.parse(timeline[top_name]["end"])
+    def __init__(self, timeline: dict, top_name: str):
+        timelime_item = timeline[top_name]
 
-        self.width = timeline[top_name].get("width", 8.0)
-        self.height = timeline[top_name].get("height", 8.0)
+        self.start_date = dateutil.parser.parse(timelime_item["start"])
+        self.end_date = dateutil.parser.parse(timelime_item["end"])
 
-        self.interval_title_fontsize = timeline[top_name].get("title_fontsize", 8)
-        self.note_fontsize = timeline[top_name].get("note_fontsize", 6)  # pts
+        self.width = timelime_item.get("width", 8.0)
+        self.height = timelime_item.get("height", 8.0)
 
-        self.band_title_fontsize = timeline[top_name].get("title_fontsize", 8)
+        self.fontsizes = {  # in pts
+            "interval_title": timelime_item.get("title_fontsize", 8),
+            "band_title": timelime_item.get("title_fontsize", 8),
+            "note_title": timelime_item.get("title_fontsize", 8),
+            "note_text": timelime_item.get("note_fontsize", 6),
+        }
 
-        self.time_tick_display_cadence = timeline[top_name].get(
+        self.time_tick_display_cadence = timelime_item.get(
             "time_tick_display_cadence", 1
         )
 
-        self.y_annotation_gap = (
-            0.25 * self.line_height * self.interval_title_fontsize / (self.height * 72)
-        )  # 72 pts/inch
-        self.note_gap = (
-            0.25 * self.line_height * self.note_fontsize / (self.height * 72)
-        )
+        self.y_annotation_gap = self.calculate_ygap(self.fontsizes["interval_title"])
+        self.note_gap = self.calculate_ygap(self.fontsizes["note_text"])
 
-    def get_date_coord(self, date: datetime.datetime):
+    def get_date_coord(self, date: datetime.datetime) -> float:
         """Converts a datetime into an x-coordinate of the timeline."""
         return (date - self.start_date) / (self.end_date - self.start_date)
+
+    def calculate_ygap(self, fontsize: float) -> float:
+        """Calculate the appropriate y-gap given the fontsize."""
+        ppi = 72  # 72 pts/inch
+        return 0.25 * self.line_height * fontsize / (self.height * ppi)
 
 
 def order_timeline(timeline: dict, verbose: bool = True) -> None:
@@ -316,23 +321,25 @@ def setup_plot(timeline: dict, coords: TimelineCoords, top_name: str) -> tuple:
     top_ax.set_ylim([0.0, 1.0])
 
     grid_color = "#e8e8e8"
-    # plt.grid(which="minor", axis="x", linestyle=":", color=grid_color)
-    plt.grid(which="major", axis="x", color=grid_color)
+    ax.grid(which="major", axis="x", color=grid_color)
 
     # set title of timeline
-    title = timeline[top_name].get("title")
-    title = (title if title is not None else top_name).encode().decode("unicode_escape")
+    title = timeline[top_name].get("title", top_name)
+    title = title.encode().decode("unicode_escape")
     plt.title(title, y=1.1)
 
-    left_margin = timeline[top_name].get("left-margin", None)
-    right_margin = timeline[top_name].get("right-margin", None)
-    top_margin = timeline[top_name].get("top-margin", None)
-    bottom_margin = timeline[top_name].get("bottom-margin", None)
-
-    left_margin = 0.05 if left_margin is None else left_margin / coords.width
-    right_margin = 0.05 if right_margin is None else right_margin / coords.width
-    top_margin = 0.05 if top_margin is None else top_margin / coords.height
-    bottom_margin = 0.05 if bottom_margin is None else bottom_margin / coords.height
+    left_margin = (
+        timeline[top_name].get("left-margin", 0.05 * coords.width) / coords.width
+    )
+    right_margin = (
+        timeline[top_name].get("right-margin", 0.05 * coords.width) / coords.width
+    )
+    top_margin = (
+        timeline[top_name].get("top-margin", 0.05 * coords.height) / coords.height
+    )
+    bottom_margin = (
+        timeline[top_name].get("bottom-margin", 0.05 * coords.height) / coords.height
+    )
 
     plt.subplots_adjust(
         left=left_margin,
@@ -352,10 +359,10 @@ def setup_plot(timeline: dict, coords: TimelineCoords, top_name: str) -> tuple:
         if i % coords.time_tick_display_cadence != 0:
             label.set_visible(False)
 
-    return fig, ax
+    return fig
 
 
-def render_numbering(timeline, fig, coords, ax, verbose=False):
+def render_numbering(timeline, fig, coords, verbose: bool = False):
     """Render the numbering type items in the timeline."""
     numberings = _get_type(timeline, "numbering")
     for name in numberings:
@@ -411,7 +418,7 @@ def render_numbering(timeline, fig, coords, ax, verbose=False):
             value += 1
 
 
-def render_values(timeline, fig, coords, ax, verbose=False):
+def render_values(timeline, fig, coords, verbose=False):
     """Render the value type items in the timeline."""
     values = _get_type(timeline, "value")
     for name in values:
@@ -425,11 +432,9 @@ def render_values(timeline, fig, coords, ax, verbose=False):
         rotation = v["rotation"] if "rotation" in v else "horizontal"
         fontsize = v["fontsize"] if "fontsize" in v else 4
 
-        axis = coords.ax
-
         top_name = _get_type(timeline, "timeline")[0]
         _, major_locator, _ = get_locator(timeline, top_name, interval)
-        vmin, vmax = axis.get_xlim()
+        vmin, vmax = coords.ax.get_xlim()
         tick_locations = major_locator.tick_values(
             mdates.num2date(vmin), mdates.num2date(vmax)
         )
@@ -438,7 +443,7 @@ def render_values(timeline, fig, coords, ax, verbose=False):
         tick_locations = tick_locations[start_week - 1 :]
         xlocs = xlocs[start_week - 1 :]
         for x, interval_value in zip(xlocs, interval_values):
-            plt.text(
+            coords.ax.text(
                 x,
                 yloc,
                 f"{interval_value}",
@@ -450,7 +455,7 @@ def render_values(timeline, fig, coords, ax, verbose=False):
             )
 
 
-def render_lines(timeline, fig, coords, ax, verbose=False):
+def render_lines(timeline, fig, coords, verbose=False):
     """Render the vertical line type items in the timeline."""
     vlines = _get_type(timeline, "vertical line")
     for name in vlines:
@@ -468,7 +473,7 @@ def render_lines(timeline, fig, coords, ax, verbose=False):
         linewidth = float(v.get("linewidth", 1.0))
         linestyle = _encode_linestyle(v.get("linestyle", "solid"))
 
-        ax.axvline(
+        coords.ax.axvline(
             x=start,
             ymin=0.0,
             ymax=1.0,
@@ -479,18 +484,18 @@ def render_lines(timeline, fig, coords, ax, verbose=False):
 
         title = v.get("title")
         if title is not None:
-            ax.text(
+            coords.ax.text(
                 start,
                 0.02,
                 title,
                 rotation="vertical",
-                fontsize=coords.note_fontsize,
+                fontsize=coords.fontsizes["note_title"],
                 ha="right",
                 va="bottom",
             )
 
 
-def render_events(timeline, fig, coords, ax, verbose=False):
+def render_events(timeline, fig, coords, verbose=False):
     """Render the event type items in the timeline."""
     events = _get_type(timeline, "event")
     for name in events:
@@ -514,14 +519,14 @@ def render_events(timeline, fig, coords, ax, verbose=False):
         y = float(timeline[name].get("location", 0.90))
         wrap = timeline[name].get("wrap", None)
         if end_date is not None:
-            ax.axhline(
+            coords.ax.axhline(
                 y=1.0,
                 xmin=x,
                 xmax=coords.get_date_coord(end_date),
                 color=color,
                 linewidth=linewidth,
             )
-        ax.axvline(x=start_date, ymin=y, ymax=1.0, color=color, linewidth=0.5)
+        coords.ax.axvline(x=start_date, ymin=y, ymax=1.0, color=color, linewidth=0.5)
         title = timeline[name].get("title")
         title_text = plt.text(
             start_date,
@@ -529,12 +534,12 @@ def render_events(timeline, fig, coords, ax, verbose=False):
             (title if title is not None else name).encode().decode("unicode_escape"),
             verticalalignment="top",
             color=title_color,
-            fontsize=coords.interval_title_fontsize,
+            fontsize=coords.fontsizes["interval_title"],
         )
 
         r = fig.canvas.get_renderer()
         bb = title_text.get_window_extent(renderer=r)
-        point = ax.transData.inverted().transform(
+        point = coords.ax.transData.inverted().transform(
             (min(bb.intervalx), min(bb.intervaly))
         )
         lower_left = point[1]
@@ -547,19 +552,19 @@ def render_events(timeline, fig, coords, ax, verbose=False):
                     textwrap.wrap(note_text, wrap, replace_whitespace=False)
                 )
 
-            plt.text(
+            coords.ax.text(
                 start_date,
                 lower_left - coords.note_gap,
                 note_text,
                 verticalalignment="top",
                 color=note_color,
-                fontsize=coords.note_fontsize,
+                fontsize=coords.fontsizes["note_text"],
                 fontstyle="italic",
                 horizontalalignment="left",
             )
 
 
-def render_intervals(timeline, fig, coords, ax, verbose=False):
+def render_intervals(timeline, fig, coords, verbose=False):
     """Render the interval type items in the timeline."""
     intervals = _get_type(timeline, "interval")
     for name in intervals:
@@ -577,7 +582,7 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
         xmin = coords.get_date_coord(start)
         xmax = coords.get_date_coord(end)
         y = i.get("location", 0.5)
-        ax.axhline(
+        coords.ax.axhline(
             y=y,
             xmin=xmin,
             xmax=xmax,
@@ -589,7 +594,7 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
         annotation_value = i.get("annotation", "")
         if annotation_value.find("start") >= 0:
             annotation_format = i.get("annotation_format", "%Y-%m-%d")
-            plt.text(
+            coords.ax.text(
                 start,
                 y + coords.y_annotation_gap,
                 "⇤" + start.strftime(annotation_format),
@@ -598,7 +603,7 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
             )
         if annotation_value.find("end") >= 0:
             annotation_format = i.get("annotation_format", "%Y-%m-%d")
-            plt.text(
+            coords.ax.text(
                 end,
                 y + coords.y_annotation_gap,
                 end.strftime(annotation_format) + "⇥",
@@ -608,11 +613,11 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
             )
 
         title = i.get("title")
-        title_text = plt.text(
+        title_text = coords.ax.text(
             start + 0.5 * (end - start),
             y - 2 * coords.y_annotation_gap,
             (title if title is not None else name).encode().decode("unicode_escape"),
-            fontsize=coords.interval_title_fontsize,
+            fontsize=coords.fontsizes["interval_title"],
             verticalalignment="top",
             horizontalalignment="center",
             color=title_color,
@@ -620,26 +625,26 @@ def render_intervals(timeline, fig, coords, ax, verbose=False):
 
         r = fig.canvas.get_renderer()
         bb = title_text.get_window_extent(renderer=r)
-        point = ax.transData.inverted().transform(
+        point = coords.ax.transData.inverted().transform(
             (min(bb.intervalx), min(bb.intervaly))
         )
         lower_left = point[1]
 
         note = i.get("note")
         if note is not None:
-            plt.text(
+            coords.ax.text(
                 start + 0.5 * (end - start),
                 lower_left - coords.note_gap,
                 note.encode().decode("unicode_escape"),
                 verticalalignment="top",
                 color=note_color,
-                fontsize=coords.note_fontsize,
+                fontsize=coords.fontsizes["note_text"],
                 fontstyle="italic",
                 horizontalalignment="center",
             )
 
 
-def render_bands(timeline, fig, coords, ax, verbose=False):
+def render_bands(timeline, fig, coords, verbose=False):
     """Render the band type items in the timeline."""
     bands = _get_type(timeline, "band")
     for name in bands:
@@ -656,10 +661,8 @@ def render_bands(timeline, fig, coords, ax, verbose=False):
         linewidth = float(i.get("linewidth", 3.0))
         linestyle = _encode_linestyle(i.get("linestyle", "solid"))
 
-        xmin = coords.get_date_coord(start)
-        xmax = coords.get_date_coord(end)
         y = i.get("location", 0.5)
-        ax.axvline(
+        coords.ax.axvline(
             x=start,
             ymin=0.0,
             ymax=1.0,
@@ -667,7 +670,7 @@ def render_bands(timeline, fig, coords, ax, verbose=False):
             linewidth=linewidth,
             linestyle=linestyle,
         )
-        ax.axvline(
+        coords.ax.axvline(
             x=end,
             ymin=0.0,
             ymax=1.0,
@@ -677,7 +680,7 @@ def render_bands(timeline, fig, coords, ax, verbose=False):
         )
         xcoords = [start, end, end, start, start]
         ycoords = [1.0, 1.0, 0.0, 0.0, 1.0]
-        ax.fill(
+        coords.ax.fill(
             xcoords,
             ycoords,
             hatch="////",
@@ -688,7 +691,7 @@ def render_bands(timeline, fig, coords, ax, verbose=False):
         annotation_value = i.get("annotation", "")
         if annotation_value.find("start") >= 0:
             annotation_format = i.get("annotation_format", "%Y-%m-%d")
-            plt.text(
+            coords.ax.text(
                 start,
                 y + coords.y_annotation_gap,
                 "⇤" + start.strftime(annotation_format),
@@ -697,7 +700,7 @@ def render_bands(timeline, fig, coords, ax, verbose=False):
             )
         if annotation_value.find("end") >= 0:
             annotation_format = i.get("annotation_format", "%Y-%m-%d")
-            annotation_text = plt.text(
+            coords.ax.text(
                 end,
                 y + coords.y_annotation_gap,
                 end.strftime(annotation_format) + "⇥",
@@ -707,7 +710,7 @@ def render_bands(timeline, fig, coords, ax, verbose=False):
             )
 
         title = i.get("title")
-        title_text = plt.text(
+        title_text = coords.ax.text(
             start + 0.5 * (end - start),
             y - 2 * coords.y_annotation_gap,
             (title if title is not None else name).encode().decode("unicode_escape"),
@@ -719,20 +722,20 @@ def render_bands(timeline, fig, coords, ax, verbose=False):
 
         r = fig.canvas.get_renderer()
         bb = title_text.get_window_extent(renderer=r)
-        point = ax.transData.inverted().transform(
+        point = coords.ax.transData.inverted().transform(
             (min(bb.intervalx), min(bb.intervaly))
         )
         lower_left = point[1]
 
         note = i.get("note")
         if note is not None:
-            plt.text(
+            coords.ax.text(
                 start + 0.5 * (end - start),
                 lower_left - coords.note_gap,
                 note.encode().decode("unicode_escape"),
                 verticalalignment="top",
                 color=note_color,
-                fontsize=coords.note_fontsize,
+                fontsize=coords.fontsizes["note_text"],
                 fontstyle="italic",
                 horizontalalignment="center",
             )
@@ -751,14 +754,14 @@ def generate(timeline, filename: str, args, parser) -> None:
 
     coords = TimelineCoords(timeline, top_name)
 
-    fig, ax = setup_plot(timeline, coords, top_name)
+    fig = setup_plot(timeline, coords, top_name)
 
-    render_intervals(timeline, fig, coords, ax, verbose=args.verbose)
-    render_bands(timeline, fig, coords, ax, verbose=args.verbose)
-    render_events(timeline, fig, coords, ax, verbose=args.verbose)
-    render_lines(timeline, fig, coords, ax, verbose=args.verbose)
-    render_numbering(timeline, fig, coords, ax, verbose=args.verbose)
-    render_values(timeline, fig, coords, ax, verbose=args.verbose)
+    render_intervals(timeline, fig, coords, verbose=args.verbose)
+    render_bands(timeline, fig, coords, verbose=args.verbose)
+    render_events(timeline, fig, coords, verbose=args.verbose)
+    render_lines(timeline, fig, coords, verbose=args.verbose)
+    render_numbering(timeline, fig, coords, verbose=args.verbose)
+    render_values(timeline, fig, coords, verbose=args.verbose)
 
     # write timeline output
     plt.savefig(filename)
