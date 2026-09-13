@@ -262,6 +262,7 @@ class ConfigParser(configparser.ConfigParser):
         if not super().has_option(section, option) and not found_value:
             return spec.default
 
+        # pylint: disable=E0601
         return value if raw else _convert(value, spec.type, spec.list)
 
     def _write(self, fileobject: TextIO) -> None:
