@@ -10,6 +10,7 @@ from . import __version__
 
 
 def main():
+    """Entry point for `epochs` commandline utility."""
     name = f"Epochs utility (epochs {__version__})"
     parser = argparse.ArgumentParser(description=name)
     parser.add_argument("-v", "--version", action="version", version=name)
