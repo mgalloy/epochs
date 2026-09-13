@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
 
+"""Module defining the `epochs` command-line utility.
+"""
+
 import argparse
 import configparser
 
-import epochs
+from . import __version__
 
 
 def main():
-    name = f"Epochs utility (epochs {epochs.__version__})"
+    name = f"Epochs utility (epochs {__version__})"
     parser = argparse.ArgumentParser(description=name)
     parser.add_argument("-v", "--version", action="version", version=name)
     parser.add_argument("filename", help="epochs config filename")
