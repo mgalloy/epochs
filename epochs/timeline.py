@@ -181,9 +181,22 @@ class TimelineCoords:
         return 0.25 * self.line_height * fontsize / (self.height * ppi)
 
 
-def order_timeline(timeline: dict, verbose: bool = True) -> None:
+def order_timeline(timeline: dict, parser, verbose: bool = True) -> None:
     """Define start/end date/times for relatively defined intervals, bands,
     lines, and events."""
+    # [TODO]: use the default start for items which have no start and
+    # default_end for items with no end
+    top_names = _get_type(timeline, "timeline")
+    # check to make sure top_name is unique
+    if len(top_names) == 0:
+        parser.error("No top-level timeline")
+    elif len(top_names) > 1:
+        parser.error("Top-level timeline not unique")
+    top_name = top_names[0]
+
+    default_start = timeline[top_name]["start"]
+    default_end = timeline[top_name]["end"]
+
     start_name = {"interval": "start", "band": "start", "line": "date", "event": "date"}
 
     # first find the items that have a defined start
@@ -230,9 +243,9 @@ def order_timeline(timeline: dict, verbose: bool = True) -> None:
                     if isinstance(start_after_end, str)
                     else start_after_end.strftime("%Y-%m-%d")
                 )
-                defined_items.append(name)
             else:
-                warn(f"undefined start for item {name}")
+                i["start"] = default_start
+            defined_items.append(name)
 
     # define "end" for items with duration
     for name in timeline:
@@ -245,11 +258,14 @@ def order_timeline(timeline: dict, verbose: bool = True) -> None:
 
         if i.get("end") is None:
             duration = i.get("duration")
-            if verbose:
-                print(name, duration)
-            duration_timedelta = _convert_duration(duration)
-            start = _decode_date(i.get(start_name[type_name]))
-            i["end"] = (start + duration_timedelta).strftime("%Y-%m-%d")
+            if duration is None:
+                i["end"] = default_end
+            else:
+                if verbose:
+                    print(name, duration)
+                duration_timedelta = _convert_duration(duration)
+                start = _decode_date(i.get(start_name[type_name]))
+                i["end"] = (start + duration_timedelta).strftime("%Y-%m-%d")
 
 
 def get_locator(timeline: dict, top_name: str, ticks: str) -> tuple:
@@ -792,7 +808,7 @@ def main():
     if not args.verbose:
         warnings.filterwarnings("ignore")
 
-    order_timeline(timeline, verbose=args.verbose)
+    order_timeline(timeline, parser, verbose=args.verbose)
 
     try:
         generate(timeline, output_filename, args, parser)
