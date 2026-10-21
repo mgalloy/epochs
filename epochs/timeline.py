@@ -94,6 +94,12 @@ def _convert_duration(duration: str) -> datetime.timedelta:
     return number * timedelta_units
 
 
+def _decode_date(date: str) -> datetime.datetime:
+    if date == "now":
+        return datetime.datetime.now()
+    return dateutil.parser.parse(date)
+
+
 def _get_type(timeline: dict, typename: str) -> list[dict]:
     """Get all the items of a particular type in the timeline."""
     return [item for item in timeline if timeline[item].get("type") == typename]
@@ -145,8 +151,8 @@ class TimelineCoords:
     def __init__(self, timeline: dict, top_name: str):
         timelime_item = timeline[top_name]
 
-        self.start_date = dateutil.parser.parse(timelime_item["start"])
-        self.end_date = dateutil.parser.parse(timelime_item["end"])
+        self.start_date = _decode_date(timelime_item["start"])
+        self.end_date = _decode_date(timelime_item["end"])
 
         self.width = timelime_item.get("width", 8.0)
         self.height = timelime_item.get("height", 8.0)
@@ -216,7 +222,7 @@ def order_timeline(timeline: dict, verbose: bool = True) -> None:
                     if start_after_start is None:
                         continue
                     start_after_duration = timeline[start_after].get("duration")
-                    start_after_end = dateutil.parser.parse(
+                    start_after_end = _decode_date(
                         start_after_start
                     ) + _convert_duration(start_after_duration)
                 i[start_name[type_name]] = (
@@ -242,7 +248,7 @@ def order_timeline(timeline: dict, verbose: bool = True) -> None:
             if verbose:
                 print(name, duration)
             duration_timedelta = _convert_duration(duration)
-            start = dateutil.parser.parse(i.get(start_name[type_name]))
+            start = _decode_date(i.get(start_name[type_name]))
             i["end"] = (start + duration_timedelta).strftime("%Y-%m-%d")
 
 
@@ -372,7 +378,7 @@ def render_numbering(timeline, fig, coords, verbose: bool = False):
         n = timeline[name]
 
         margin = 0.005
-        position = n["position"] if "position" in n else "top"
+        position = n.get("position", "top")
         if position == "top":
             va = "bottom"
             yloc = 1.0 + margin
@@ -386,9 +392,9 @@ def render_numbering(timeline, fig, coords, verbose: bool = False):
             yloc = 1.0 + margin
             axis = coords.top_ax
 
-        interval = n["interval"] if "interval" in n else "days"
-        fontsize = n["fontsize"] if "fontsize" in n else 5
-        color = n["color"] if "color" in n else "#606060"
+        interval = n.get("interval", "days")
+        fontsize = int(n.get("fontsize", 5))
+        color = _encode_color(n.get("color", "#606060"))
 
         # TODO: need to find a better way to specify these locations using the
         # value of interval
@@ -409,7 +415,7 @@ def render_numbering(timeline, fig, coords, verbose: bool = False):
         else:
             xlocs = 0.5 * (tick_locations[1:] + tick_locations[0:-1])
 
-        value = int(n["initial_value"]) if "initial_value" in n else 1
+        value = int(n.get("initial_value", 1))
         for t, x in zip(tick_locations, xlocs):
             if interval == "weeks" and "initial_value" not in n:
                 d = matplotlib.dates.num2date(t)
@@ -439,7 +445,7 @@ def render_values(timeline, fig, coords, verbose=False):
             mdates.num2date(vmin), mdates.num2date(vmax)
         )
         xlocs = 0.5 * (tick_locations[1:] + tick_locations[0:-1])
-        start_week = v["start_week"] if "start_week" in v else 1
+        start_week = int(v.get("start_week", 1))
         tick_locations = tick_locations[start_week - 1 :]
         xlocs = xlocs[start_week - 1 :]
         for x, interval_value in zip(xlocs, interval_values):
@@ -464,10 +470,7 @@ def render_lines(timeline, fig, coords, verbose=False):
         v = timeline[name]
 
         start_name = v.get("date")
-        if start_name == "now":
-            start = datetime.datetime.now()
-        else:
-            start = dateutil.parser.parse(start_name)
+        start = _decode_date(start_name)
 
         color = _encode_color(str(v.get("color", "black")))
         linewidth = float(v.get("linewidth", 1.0))
@@ -482,7 +485,7 @@ def render_lines(timeline, fig, coords, verbose=False):
             linestyle=linestyle,
         )
 
-        title = v.get("title")
+        title = v.get("title", "Title")
         if title is not None:
             coords.ax.text(
                 start,
@@ -505,11 +508,9 @@ def render_events(timeline, fig, coords, verbose=False):
         if isinstance(start_dt, datetime.datetime):
             start_date = start_dt
         else:
-            start_date = dateutil.parser.parse(timeline[name]["date"])
+            start_date = _decode_date(timeline[name]["date"])
         end_date = (
-            dateutil.parser.parse(timeline[name]["end"])
-            if "end" in timeline[name]
-            else None
+            _decode_date(timeline[name]["end"]) if "end" in timeline[name] else None
         )
         color = _encode_color(str(timeline[name].get("color", "black")))
         title_color = _encode_color(str(timeline[name].get("title_color", "black")))
@@ -569,8 +570,8 @@ def render_intervals(timeline, fig, coords, verbose=False):
     intervals = _get_type(timeline, "interval")
     for name in intervals:
         i = timeline[name]
-        start = dateutil.parser.parse(i.get("start"))
-        end = dateutil.parser.parse(i.get("end"))
+        start = _decode_date(i.get("start"))
+        end = _decode_date(i.get("end"))
         if verbose:
             print(f"interval {name}: {start:%Y-%m-%d} - {end:%Y-%m-%d}")
         color = _encode_color(str(i.get("color", "black")))
@@ -649,8 +650,8 @@ def render_bands(timeline, fig, coords, verbose=False):
     bands = _get_type(timeline, "band")
     for name in bands:
         i = timeline[name]
-        start = dateutil.parser.parse(i.get("start"))
-        end = dateutil.parser.parse(i.get("end"))
+        start = _decode_date(i.get("start"))
+        end = _decode_date(i.get("end"))
         if verbose:
             print(f"band {name}: {start:%Y-%m-%d} - {end:%Y-%m-%d}")
         fillcolor = _encode_color(str(i.get("fillcolor", "#c0c0c0")))
