@@ -13,6 +13,7 @@ import warnings
 
 import dateutil.parser
 import matplotlib
+import matplotlib.ticker
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import yaml
@@ -195,6 +196,9 @@ def order_timeline(timeline: dict, parser, verbose: bool = True) -> None:
     top_name = top_names[0]
 
     default_start = timeline[top_name]["start"]
+    if "end" not in timeline[top_name]:
+        now = datetime.datetime.now()
+        timeline[top_name]["end"] = now.strftime("%Y-%m-%d")
     default_end = timeline[top_name]["end"]
 
     start_name = {"interval": "start", "band": "start", "line": "date", "event": "date"}
@@ -268,34 +272,74 @@ def order_timeline(timeline: dict, parser, verbose: bool = True) -> None:
                 i["end"] = (start + duration_timedelta).strftime("%Y-%m-%d")
 
 
-def get_locator(timeline: dict, top_name: str, ticks: str) -> tuple:
+def get_minor_locator(minor_ticks: str | None):
+    locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
+
+    if minor_ticks == "none":
+        locator = matplotlib.ticker.NullLocator()
+    elif minor_ticks == "days":
+        locator = mdates.DayLocator(interval=1)
+    elif minor_ticks == "weeks":
+        minor_ticks = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
+    elif minor_ticks == "months":
+        locator = mdates.MonthLocator(interval=1)
+    elif minor_ticks == "years":
+        locator = mdates.YearLocator(month=1)
+    elif minor_ticks == "hours":
+        locator = mdates.HourLocator(interval=1)
+
+    return locator
+
+
+def get_locators(
+    timeline: dict, top_name: str, ticks: str, minor_ticks: str | None
+) -> tuple:
     """Get the tick format, major locator, and minor locator for the x-axis of
     the timeline, given the timeline specification and the name of the how the
     ticks should be given: "hours", "days", "weeks", "months", or "years"."""
+    minor_locator = get_minor_locator(minor_ticks)
     if ticks == "days":
         tick_format = timeline[top_name].get("tick-format", "%d %b %y")
         major_locator = mdates.DayLocator(interval=1)
-        minor_locator = None
+        if minor_ticks is None:
+            minor_locator = None
+        else:
+            minor_locator = get_minor_locator(minor_ticks)
     elif ticks == "weeks":
         tick_format = timeline[top_name].get("tick-format", "%d %b %y")
         major_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
-        minor_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
+        if minor_ticks is None:
+            minor_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
+        else:
+            minor_locator = get_minor_locator(minor_ticks)
     elif ticks == "months":
         tick_format = timeline[top_name].get("tick-format", "%b %y")
         major_locator = mdates.MonthLocator(interval=1)
-        minor_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
+        if minor_ticks is None:
+            minor_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
+        else:
+            minor_locator = get_minor_locator(minor_ticks)
     elif ticks == "years":
         tick_format = timeline[top_name].get("tick-format", "%y")
         major_locator = mdates.YearLocator(month=1)
-        minor_locator = mdates.MonthLocator(interval=1)
+        if minor_ticks is None:
+            minor_locator = mdates.MonthLocator(interval=1)
+        else:
+            minor_locator = get_minor_locator(minor_ticks)
     elif ticks == "hours":
         tick_format = timeline[top_name].get("tick-format", "%H")
         major_locator = mdates.HourLocator(interval=1)
-        minor_locator = mdates.MinuteLocator(interval=15)
+        if minor_ticks is None:
+            minor_locator = mdates.MinuteLocator(interval=15)
+        else:
+            minor_locator = get_minor_locator(minor_ticks)
     else:
         tick_format = timeline[top_name].get("tick-format", "%d %b %y")
         major_locator = mdates.WeekdayLocator(byweekday=mdates.MONDAY, interval=1)
-        minor_locator = None
+        if minor_ticks is None:
+            minor_locator = None
+        else:
+            minor_locator = get_minor_locator(minor_ticks)
 
     return tick_format, major_locator, minor_locator
 
@@ -316,8 +360,12 @@ def setup_plot(timeline: dict, coords: TimelineCoords, top_name: str) -> tuple:
     coords.top_ax = top_ax
 
     ticks = timeline[top_name].get("ticks", "weeks").lower()
-
-    tick_format, major_locator, minor_locator = get_locator(timeline, top_name, ticks)
+    minor_ticks = timeline[top_name].get("minor_ticks", None)
+    if minor_ticks is not None:
+        minor_ticks = minor_ticks.lower()
+    tick_format, major_locator, minor_locator = get_locators(
+        timeline, top_name, ticks, minor_ticks
+    )
 
     ax.get_xaxis().set_major_locator(major_locator)
     top_ax.get_xaxis().set_major_locator(major_locator)
@@ -415,7 +463,7 @@ def render_numbering(timeline, fig, coords, verbose: bool = False):
         # TODO: need to find a better way to specify these locations using the
         # value of interval
         top_name = _get_type(timeline, "timeline")[0]
-        _, major_locator, _ = get_locator(timeline, top_name, interval)
+        _, major_locator, _ = get_locators(timeline, top_name, interval, None)
         vmin, vmax = axis.get_xlim()
         tick_locations = major_locator.tick_values(
             mdates.num2date(vmin), mdates.num2date(vmax)
@@ -455,7 +503,7 @@ def render_values(timeline, fig, coords, verbose=False):
         fontsize = v["fontsize"] if "fontsize" in v else 4
 
         top_name = _get_type(timeline, "timeline")[0]
-        _, major_locator, _ = get_locator(timeline, top_name, interval)
+        _, major_locator, _ = get_locators(timeline, top_name, interval, None)
         vmin, vmax = coords.ax.get_xlim()
         tick_locations = major_locator.tick_values(
             mdates.num2date(vmin), mdates.num2date(vmax)
@@ -634,9 +682,9 @@ def render_intervals(timeline, fig, coords, verbose=False):
             start + 0.5 * (end - start),
             y - 2 * coords.y_annotation_gap,
             (title if title is not None else name).encode().decode("unicode_escape"),
-            fontsize=coords.fontsizes["interval_title"],
+            fontsize=i.get("fontsize", coords.fontsizes["interval_title"]),
             verticalalignment="top",
-            horizontalalignment="center",
+            horizontalalignment=i.get("halign", "center"),
             color=title_color,
         )
 
@@ -655,7 +703,7 @@ def render_intervals(timeline, fig, coords, verbose=False):
                 note.encode().decode("unicode_escape"),
                 verticalalignment="top",
                 color=note_color,
-                fontsize=coords.fontsizes["note_text"],
+                fontsize=i.get("note_fontsize", coords.fontsizes["note_text"]),
                 fontstyle="italic",
                 horizontalalignment="center",
             )
@@ -731,7 +779,7 @@ def render_bands(timeline, fig, coords, verbose=False):
             start + 0.5 * (end - start),
             y - 2 * coords.y_annotation_gap,
             (title if title is not None else name).encode().decode("unicode_escape"),
-            fontsize=coords.band_title_fontsize,
+            fontsize=i.get("fontsize", coords.fontsizes["band_title"]),
             verticalalignment="top",
             horizontalalignment="center",
             color=title_color,
