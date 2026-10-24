@@ -585,13 +585,19 @@ def render_events(timeline, fig, coords, verbose=False):
         wrap = timeline[name].get("wrap", None)
         if end_date is not None:
             coords.ax.axhline(
-                y=1.0,
+                y=float(timeline[name].get("top_location", 1.0)),
                 xmin=x,
                 xmax=coords.get_date_coord(end_date),
                 color=color,
                 linewidth=linewidth,
             )
-        coords.ax.axvline(x=start_date, ymin=y, ymax=1.0, color=color, linewidth=0.5)
+        coords.ax.axvline(
+            x=start_date,
+            ymin=y,
+            ymax=float(timeline[name].get("top_location", 1.0)),
+            color=color,
+            linewidth=0.5,
+        )
         title = timeline[name].get("title")
         title_text = plt.text(
             start_date,
