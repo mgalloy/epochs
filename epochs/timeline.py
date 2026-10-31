@@ -6,6 +6,7 @@ yaml specification into a PDF timeline.
 
 import argparse
 import datetime
+import json
 import os
 import re
 import textwrap
@@ -16,6 +17,7 @@ import matplotlib
 import matplotlib.ticker
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+import numpy as np
 import yaml
 
 try:
@@ -596,7 +598,7 @@ def render_events(timeline, fig, coords, verbose=False):
             ymin=y,
             ymax=float(timeline[name].get("top_location", 1.0)),
             color=color,
-            linewidth=0.5,
+            linewidth=float(timeline[name].get("linewidth", 0.5)),
         )
         title = timeline[name].get("title")
         title_text = plt.text(
@@ -812,6 +814,52 @@ def render_bands(timeline, fig, coords, verbose=False):
             )
 
 
+def render_plots(timeline, fig, coords, verbose: bool = False):
+    """Render the plot type items in the timeline."""
+    plots = _get_type(timeline, "plot")
+    for name in plots:
+        i = timeline[name]
+        if verbose:
+            print(f"plot {name}")
+
+        # [TODO]: handle if it has a "values" attribute
+        filename = i.get("filename")
+        title = i.get("title", None)
+        color = i.get("color", "black")
+        linewidth = float(i.get("linewidth", 1.0))
+        xvarname = i.get("xvar")
+        yvarname = i.get("yvar")
+        yrange = [float(v) for v in i.get("yrange").split()]
+        loc = float(i.get("location"))
+        top_loc = float(i.get("top_location"))
+
+        date_format = i.get("date_format")
+        with open(filename, "r") as f:
+            data = json.load(f)
+        x = [datetime.datetime.strptime(d[xvarname], date_format) for d in data]
+        m = (top_loc - loc) / (yrange[1] - yrange[0])
+        y = [(m * (float(d[yvarname]) - yrange[0]) + loc) for d in data]
+        coords.ax.plot(
+            x,
+            y,
+            color=color,
+            linewidth=linewidth,
+        )
+        if title is not None:
+            if verbose:
+                left_loc = x[np.argmax(np.array(x) > coords.start_date)]
+                print(f'  adding title: "{title}" @ {left_loc}, {top_loc}')
+            coords.ax.text(
+                left_loc,
+                top_loc,
+                title,
+                ha="left",
+                va="bottom",
+                fontsize=i.get("fontsize", coords.fontsizes["interval_title"]),
+                color="black",
+            )
+
+
 def generate(timeline, filename: str, args, parser) -> None:
     """Generate the PDF of the timeline."""
     top_names = _get_type(timeline, "timeline")
@@ -827,6 +875,7 @@ def generate(timeline, filename: str, args, parser) -> None:
 
     fig = setup_plot(timeline, coords, top_name)
 
+    render_plots(timeline, fig, coords, verbose=args.verbose)
     render_intervals(timeline, fig, coords, verbose=args.verbose)
     render_bands(timeline, fig, coords, verbose=args.verbose)
     render_events(timeline, fig, coords, verbose=args.verbose)
