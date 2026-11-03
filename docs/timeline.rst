@@ -121,6 +121,28 @@ Fields (``type: event``):
 - ``note``
 
 
+Plots
+=====
+
+Fields (``type: plot``)
+
+- ``filename`` -- filename of JSON file containing a list of dictionaries; use
+  ``xvar`` and ``yvar`` to specify the names of the fields of the dictionaries
+  that provide the x-axis and y-axis values
+- ``title``
+- ``color`` -- color of plot, default "black"
+- ``linewidth``
+- ``xvar`` -- name of fields in JSON file that provide the x-axis values
+- ``yvar`` -- name of fields in JSON file that provide the y-axis values
+- ``yrange`` -- two values, specified by spaces, that provide the y-axis min and
+  max values for the plot; the min value is scaled to ``location`` and the max
+  value is scaled to ``top_location``
+- ``location``
+- ``top_location``
+- ``date_format`` -- date format of ``strptime`` that indicates how to parse
+  the field specified by ``xvar`` as date/times
+- ``fontsize``
+
 Numberings
 ==========
 
