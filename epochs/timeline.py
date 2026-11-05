@@ -83,6 +83,10 @@ def warn(msg: str):
     print(f"WARNING: {msg}")
 
 
+def _unescape(text: str) -> str:
+    return text.encode("latin-1", "backslashreplace").decode("unicode_escape")
+
+
 def _convert_duration(duration: str) -> datetime.timedelta:
     """Convert the duration of an event from a string to a `datetime.timedelta`.
     The duration must be a number followed by one more more spaces followed by
@@ -397,7 +401,7 @@ def setup_plot(timeline: dict, coords: TimelineCoords, top_name: str) -> tuple:
 
     # set title of timeline
     title = timeline[top_name].get("title", top_name)
-    title = title.encode().decode("unicode_escape")
+    title = _unescape(title)
     plt.title(title, y=1.1)
 
     left_margin = (
@@ -604,7 +608,7 @@ def render_events(timeline, fig, coords, verbose=False):
         title_text = plt.text(
             start_date,
             y - coords.y_annotation_gap,
-            (title if title is not None else name).encode().decode("unicode_escape"),
+            _unescape(title if title is not None else name),
             verticalalignment="top",
             color=title_color,
             fontsize=coords.fontsizes["interval_title"],
@@ -619,7 +623,7 @@ def render_events(timeline, fig, coords, verbose=False):
 
         note = timeline[name].get("note")
         if note is not None:
-            note_text = note.encode().decode("unicode_escape")
+            note_text = _unescape(note)
             if wrap is not None:
                 note_text = "\n".join(
                     textwrap.wrap(note_text, wrap, replace_whitespace=False)
@@ -689,7 +693,7 @@ def render_intervals(timeline, fig, coords, verbose=False):
         title_text = coords.ax.text(
             start + 0.5 * (end - start),
             y - 2 * coords.y_annotation_gap,
-            (title if title is not None else name).encode().decode("unicode_escape"),
+            _unescape(title if title is not None else name),
             fontsize=i.get("fontsize", coords.fontsizes["interval_title"]),
             verticalalignment="top",
             horizontalalignment=i.get("halign", "center"),
@@ -708,7 +712,7 @@ def render_intervals(timeline, fig, coords, verbose=False):
             coords.ax.text(
                 start + 0.5 * (end - start),
                 lower_left - coords.note_gap,
-                note.encode().decode("unicode_escape"),
+                _unescape(note),
                 verticalalignment="top",
                 color=note_color,
                 fontsize=i.get("note_fontsize", coords.fontsizes["note_text"]),
@@ -786,7 +790,7 @@ def render_bands(timeline, fig, coords, verbose=False):
         title_text = coords.ax.text(
             start + 0.5 * (end - start),
             y - 2 * coords.y_annotation_gap,
-            (title if title is not None else name).encode().decode("unicode_escape"),
+            _unescape(title if title is not None else name),
             fontsize=i.get("fontsize", coords.fontsizes["band_title"]),
             verticalalignment="top",
             horizontalalignment="center",
@@ -805,7 +809,7 @@ def render_bands(timeline, fig, coords, verbose=False):
             coords.ax.text(
                 start + 0.5 * (end - start),
                 lower_left - coords.note_gap,
-                note.encode().decode("unicode_escape"),
+                _unescape(note),
                 verticalalignment="top",
                 color=note_color,
                 fontsize=coords.fontsizes["note_text"],
