@@ -6,17 +6,24 @@ special "timeline" item
 
 All items in the timeline have a type:
 
-- ``type`` -- one of the types described below: "interval", "band", "line",
-  "event", "numbering", or "value"
+- ``type`` -- one of the types described below: "timeline", "interval", "band",
+  "line", "event", "numbering", "value", or "plot"
 
 There are other common fields with the same format for allowable values:
 
-- date fields -- [TODO]: specify format
+- date fields -- dates are specified as anything ``dateutil.parser.parse``
+  (`docs`_) can parse, also allows "now" to specify the current date/time
 - ``duration`` -- specified as "X unit" where "X" must be an integer value and
   "unit" must be one of "second", "minute", "hour", "day", "week", "month",
-  "year", or plural version of one of these
-- color fields -- such as ``color``, ``title_color``, ``note_color``, etc,
-  [TODO]: specify format
+  "year", or plural version of one of these, e.g., "3 days", "1 minute", or
+  "5 year"
+- color fields -- such as ``color``, ``title_color``, ``note_color``, can be
+  specified the string values from `matplotlib colors`_ or sany of the names
+  specified in `matplotlib color names`_
+
+.. _docs: https://dateutil.readthedocs.io/en/stable/parser.html#dateutil.parser.parse
+.. _matplotlib colors: https://matplotlib.org/stable/users/explain/colors/colors.html
+.. _matplotlib color names: https://matplotlib.org/stable/gallery/color/named_colors.html
 
 
 Timelines
@@ -43,6 +50,10 @@ coordinate system for the other items to be place on.
 
 Intervals
 =========
+
+Intervals are represented by horizontal lines from a start to an end date/time.
+Along with a horizontal line, they can have titles, notes, annotations for
+start/end dates.
 
 The allowable fields of an interval (``type: interval``) are:
 
@@ -75,6 +86,8 @@ The allowable fields of an interval (``type: interval``) are:
 Bands
 =====
 
+Bands are represented by vertical bands from a start to an end date/time.
+
 Fields (``type: band``):
 
 - ``start``
@@ -98,6 +111,8 @@ Fields (``type: band``):
 Lines
 =====
 
+Lines are vertical lines at a given date/time.
+
 vertical line fields (``type: line``):
 
 - ``date``
@@ -108,6 +123,10 @@ vertical line fields (``type: line``):
 Events
 ======
 
+Events are typically noting a particular date/time, but optionally can have an
+end date/time. They are represented with a vertical line at the date/time
+leading down to an title annotation.
+
 Fields (``type: event``):
 
 - ``date``
@@ -116,6 +135,7 @@ Fields (``type: event``):
 - ``title_color``
 - ``note_color``
 - ``location``
+- ``top_location``
 - ``wrap``
 - ``title``
 - ``note``
@@ -123,6 +143,8 @@ Fields (``type: event``):
 
 Plots
 =====
+
+Plots are displayed as a time series line plot.
 
 Fields (``type: plot``)
 
@@ -146,6 +168,8 @@ Fields (``type: plot``)
 Numberings
 ==========
 
+Numbering are a way to mark regular intervals with an integer value.
+
 Fields (``type: numbering``):
 
 - ``position``
@@ -157,6 +181,8 @@ Fields (``type: numbering``):
 
 Values
 ======
+
+Values are a way to display a given set of values on a regular interval.
 
 (``type: value``)
 
